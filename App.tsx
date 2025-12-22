@@ -27,8 +27,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const storeRes = await fetch('http://localhost:3001/api/store');
-        const prodRes = await fetch('http://localhost:3001/api/products');
+        const storeRes = await fetch('/api/store');
+        const prodRes = await fetch('/api/products');
 
         if (storeRes.ok && prodRes.ok) {
           const storeData = await storeRes.json();
@@ -51,12 +51,12 @@ const App: React.FC = () => {
 
   const handleUpdateConfig = async (store: StoreConfig, prods: Product[]) => {
     try {
-      const storeRes = await fetch('http://localhost:3001/api/store', {
+      const storeRes = await fetch('/api/store', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(store)
       });
-      const prodRes = await fetch('http://localhost:3001/api/products', {
+      const prodRes = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prods)

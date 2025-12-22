@@ -53,6 +53,23 @@ app.post('/api/products', async (req, res) => {
     }
 });
 
+// Serve static files from dist directory in production (after API routes)
+const DIST_DIR = path.join(__dirname, '..', 'dist');
+fs.access(DIST_DIR)
+    .then(() => {
+        app.use(express.static(DIST_DIR));
+        // Serve index.html for all non-API routes (SPA routing)
+        app.get('*', (req, res) => {
+            if (!req.path.startsWith('/api')) {
+                res.sendFile(path.join(DIST_DIR, 'index.html'));
+            }
+        });
+        console.log('Static files will be served from dist directory');
+    })
+    .catch(() => {
+        // dist directory doesn't exist (development mode), ignore
+    });
+
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
