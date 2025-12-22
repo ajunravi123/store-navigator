@@ -1,0 +1,7 @@
+{
+  "name": "Instore Navigator 3D",
+  "description": "A sophisticated indoor store navigation application featuring 3D pathfinding and AI-powered semantic shopping assistance.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
