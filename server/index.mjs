@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,133 +17,138 @@ const DATA_DIR = path.join(__dirname, 'data');
 const STORE_FILE = path.join(DATA_DIR, 'store.json');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 
-// In-memory cache for fast reads
-let storeCache = null;
-let productsCache = null;
-let storeCacheTime = 0;
-let productsCacheTime = 0;
-
-// Load data from file into cache
-async function loadStoreData() {
+// Ensure data directory exists
+async function ensureDataDir() {
     try {
-        const data = await fs.readFile(STORE_FILE, 'utf-8');
-        storeCache = JSON.parse(data);
-        storeCacheTime = Date.now();
-        return storeCache;
+        await fs.mkdir(DATA_DIR, { recursive: true });
     } catch (error) {
-        console.error('Failed to load store data:', error);
-        throw error;
+        console.error('Failed to create data directory:', error);
     }
 }
 
-async function loadProductsData() {
-    try {
-        const data = await fs.readFile(PRODUCTS_FILE, 'utf-8');
-        productsCache = JSON.parse(data);
-        productsCacheTime = Date.now();
-        return productsCache;
-    } catch (error) {
-        console.error('Failed to load products data:', error);
-        throw error;
-    }
-}
-
-// Initialize cache on server startup
-async function initializeCache() {
-    try {
-        await Promise.all([loadStoreData(), loadProductsData()]);
-        console.log('Data cache initialized successfully');
-    } catch (error) {
-        console.error('Failed to initialize cache:', error);
-        // Continue anyway - endpoints will try to load on first request
-    }
-}
-
-// GET endpoints - serve from cache (very fast)
+// GET /api/store - Get store data
 app.get('/api/store', async (req, res) => {
     try {
-        if (storeCache === null) {
-            await loadStoreData();
+        const data = await fs.readFile(STORE_FILE, 'utf-8');
+        res.setHeader('Content-Type', 'application/json');
+        res.status(200);
+        res.end(data);
+    } catch (err) {
+        // If file doesn't exist, return empty object
+        if (err.code === 'ENOENT') {
+            res.setHeader('Content-Type', 'application/json');
+            res.status(200);
+            res.end(JSON.stringify({}));
+        } else {
+            console.error('Error reading store data:', err);
+            res.status(500);
+            res.end(JSON.stringify({ error: 'Failed to read store data' }));
         }
-        res.json(storeCache);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to read store data' });
     }
 });
 
+// POST /api/store - Save store data
+app.post('/api/store', async (req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        res.status(204);
+        res.end();
+        return;
+    }
+    if (req.method !== 'POST') return next();
+
+    try {
+        const dataToSave = req.body;
+        
+        // Validate payload
+        if (dataToSave === undefined || dataToSave === null) {
+            res.status(400);
+            res.end(JSON.stringify({ error: 'Invalid payload: body is required' }));
+            return;
+        }
+
+        await fs.writeFile(STORE_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
+        res.setHeader('Content-Type', 'application/json');
+        res.status(200);
+        res.end(JSON.stringify({ status: 'ok', message: 'Store data saved successfully' }));
+    } catch (err) {
+        console.error('Error writing store data:', err);
+        res.status(500);
+        res.end(JSON.stringify({ error: 'Failed to write store data' }));
+    }
+});
+
+// GET /api/products - Get products data
 app.get('/api/products', async (req, res) => {
     try {
-        if (productsCache === null) {
-            await loadProductsData();
+        const data = await fs.readFile(PRODUCTS_FILE, 'utf-8');
+        res.setHeader('Content-Type', 'application/json');
+        res.status(200);
+        res.end(data);
+    } catch (err) {
+        // If file doesn't exist, return empty array
+        if (err.code === 'ENOENT') {
+            res.setHeader('Content-Type', 'application/json');
+            res.status(200);
+            res.end(JSON.stringify([]));
+        } else {
+            console.error('Error reading products data:', err);
+            res.status(500);
+            res.end(JSON.stringify({ error: 'Failed to read products data' }));
         }
-        res.json(productsCache);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to read products data' });
     }
 });
 
-// POST endpoints - update cache and file
-app.post('/api/store', async (req, res) => {
-    try {
-        const dataToSave = req.body;
-        // Update cache immediately
-        storeCache = dataToSave;
-        storeCacheTime = Date.now();
-        // Write to file asynchronously (don't block response)
-        fs.writeFile(STORE_FILE, JSON.stringify(dataToSave, null, 2))
-            .catch(err => console.error('Failed to write store data to file:', err));
-        res.json({ message: 'Store data saved successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to save store data' });
+// POST /api/products - Save products data
+app.post('/api/products', async (req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        res.status(204);
+        res.end();
+        return;
     }
-});
+    if (req.method !== 'POST') return next();
 
-app.post('/api/products', async (req, res) => {
     try {
         const dataToSave = req.body;
-        // Update cache immediately
-        productsCache = dataToSave;
-        productsCacheTime = Date.now();
-        // Write to file asynchronously (don't block response)
-        fs.writeFile(PRODUCTS_FILE, JSON.stringify(dataToSave, null, 2))
-            .catch(err => console.error('Failed to write products data to file:', err));
-        res.json({ message: 'Products data saved successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to save products data' });
+        
+        // Validate payload - products should be an array
+        if (!Array.isArray(dataToSave)) {
+            res.status(400);
+            res.end(JSON.stringify({ error: 'Invalid payload: products must be an array' }));
+            return;
+        }
+
+        await fs.writeFile(PRODUCTS_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
+        res.setHeader('Content-Type', 'application/json');
+        res.status(200);
+        res.end(JSON.stringify({ status: 'ok', message: 'Products data saved successfully', productsCount: dataToSave.length }));
+    } catch (err) {
+        console.error('Error writing products data:', err);
+        res.status(500);
+        res.end(JSON.stringify({ error: 'Failed to write products data' }));
     }
 });
 
 // Serve static files from dist directory in production (after API routes)
 const DIST_DIR = path.join(__dirname, '..', 'dist');
-fs.access(DIST_DIR)
-    .then(() => {
-        app.use(express.static(DIST_DIR));
-        // Serve index.html for all non-API routes (SPA routing)
-        app.get('*', (req, res) => {
-            if (!req.path.startsWith('/api')) {
-                res.sendFile(path.join(DIST_DIR, 'index.html'));
-            }
-        });
-        console.log('Static files will be served from dist directory');
-    })
-    .catch(() => {
-        // dist directory doesn't exist (development mode), ignore
-    });
 
-// Initialize cache and start server
-async function startServer() {
-    try {
-        await initializeCache();
-        app.listen(PORT, () => {
-            console.log(`Server running at http://localhost:${PORT}`);
-        });
-    } catch (error) {
-        console.error('Failed to start server:', error);
-        // Start server anyway - endpoints will handle errors
-        app.listen(PORT, () => {
-            console.log(`Server running at http://localhost:${PORT} (cache initialization failed)`);
-        });
-    }
+// Initialize and start server
+await ensureDataDir();
+
+// Check if dist directory exists and serve static files
+try {
+    await fs.access(DIST_DIR);
+    app.use(express.static(DIST_DIR));
+    // Serve index.html for all non-API routes (SPA routing)
+    app.get('*', (req, res) => {
+        if (!req.path.startsWith('/api')) {
+            res.sendFile(path.join(DIST_DIR, 'index.html'));
+        }
+    });
+    console.log('Static files will be served from dist directory');
+} catch {
+    // dist directory doesn't exist (development mode), ignore
 }
 
-startServer();
+app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+});
