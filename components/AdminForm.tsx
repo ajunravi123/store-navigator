@@ -242,7 +242,9 @@ const AdminForm: React.FC<AdminFormProps> = ({
             aisleId: 'Z1-A1',
             bayId: firstBay?.id || '',
             shelfId: firstBay?.shelves[0]?.id || '',
-            image: 'https://picsum.photos/400/400'
+            image: 'https://picsum.photos/400/400',
+            sku: '',
+            stockCount: 100
         };
         updateProducts([...products, newProduct]);
         onProductExpand(newProduct.id);
@@ -841,6 +843,27 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                                 value={product.category}
                                                                 onChange={(e) => updateProduct(product.id, { category: e.target.value })}
                                                                 className="text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-2xl px-5 py-3 focus:border-blue-500 outline-none w-full shadow-sm"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">SKU Code</label>
+                                                            <input
+                                                                type="text"
+                                                                value={product.sku || ''}
+                                                                onChange={(e) => updateProduct(product.id, { sku: e.target.value })}
+                                                                className="text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-2xl px-5 py-3 focus:border-blue-500 outline-none w-full shadow-sm"
+                                                                placeholder="Enter SKU code..."
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Remaining Stock Count</label>
+                                                            <input
+                                                                type="number"
+                                                                value={product.stockCount ?? ''}
+                                                                onChange={(e) => updateProduct(product.id, { stockCount: e.target.value === '' ? undefined : parseInt(e.target.value, 10) || 0 })}
+                                                                className="text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-2xl px-5 py-3 focus:border-blue-500 outline-none w-full shadow-sm"
+                                                                placeholder="0"
+                                                                min={0}
                                                             />
                                                         </div>
                                                         <div>

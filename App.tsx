@@ -7,7 +7,7 @@ import Settings from './components/Settings';
 import AIConsultant from './components/AIConsultant';
 import { findShortestPath } from './services/pathfinder';
 import { findBayById, getAllFloors, migrateStoreConfig, getProductLocation, getAisleColor } from './utils/storeHelpers';
-import { Search, Navigation2, X, Info, Target, Layers, DoorOpen, Navigation, Settings as SettingsIcon, LayoutGrid, Bot } from 'lucide-react';
+import { Search, Navigation2, X, Info, Target, Layers, DoorOpen, Navigation, Settings as SettingsIcon, LayoutGrid, Bot, Package } from 'lucide-react';
 
 type AppView = 'explorer' | 'settings';
 
@@ -315,14 +315,30 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex-1 mb-6">
                     <h3 className="text-lg font-black text-slate-900 leading-tight mb-4 group-hover:text-blue-600 transition-colors">{product.name}</h3>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-slate-500 border border-slate-100 w-fit">
-                      <Layers size={14} className="text-indigo-400" />
-                      <span className="text-xs font-bold uppercase">Floor {bay?.floor ?? 0}</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-slate-500 border border-slate-100 w-fit">
+                        <Layers size={14} className="text-indigo-400" />
+                        <span className="text-xs font-bold uppercase">Floor {bay?.floor ?? 0}</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border w-fit ${(product.stockCount ?? 0) > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                        <Package size={14} />
+                        <span className="text-xs font-bold uppercase">Stock: {product.stockCount ?? 0}</span>
+                      </div>
                     </div>
                   </div>
-                  <button onClick={() => startNavigation(product)} className={`w-full py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-3 transition-all shadow-xl active:scale-95 ${isAIMatch ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-900 text-white hover:bg-blue-600'}`}>
+                  <button 
+                    onClick={() => startNavigation(product)} 
+                    disabled={(product.stockCount ?? 0) === 0}
+                    className={`w-full py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-3 transition-all shadow-xl active:scale-95 ${
+                      (product.stockCount ?? 0) === 0 
+                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                        : isAIMatch 
+                          ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                          : 'bg-slate-900 text-white hover:bg-blue-600'
+                    }`}
+                  >
                     <Navigation2 size={16} className="rotate-45" />
-                    GO TO LOCATION
+                    {(product.stockCount ?? 0) === 0 ? 'OUT OF STOCK' : 'GO TO LOCATION'}
                   </button>
                 </div>
               );
@@ -399,17 +415,44 @@ const App: React.FC = () => {
                       <div className="pt-1">
                         <h5 className="font-black text-slate-900 text-[15px] mb-1 leading-none">{activeProduct.name}</h5>
                         {productLocation ? (
-                          <div className="space-y-0.5">
+                          <div className="space-y-1">
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                               {productLocation.zone.name} → <span style={{ color: getAisleColor(productLocation.aisle.id) }}>{productLocation.aisle.name}</span> → {productLocation.bay.name}
                               {productLocation.shelf && ` → ${productLocation.shelf.name}`}
                             </p>
-                            <p className="text-[9px] text-slate-300 font-semibold uppercase tracking-wider">
-                              Floor {targetBay?.floor}
-                            </p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-[9px] text-slate-300 font-semibold uppercase tracking-wider">
+                                Floor {targetBay?.floor}
+                              </p>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">•</span>
+                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                                {activeProduct.category}
+                              </p>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">•</span>
+                              <div className={`flex items-center gap-1 ${(activeProduct.stockCount ?? 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                <Package size={10} />
+                                <p className="text-[9px] font-bold uppercase tracking-wider">
+                                  Stock: {activeProduct.stockCount ?? 0}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         ) : (
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bay {activeProduct.bayId || activeProduct.departmentId}</p>
+                          <div className="space-y-1">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bay {activeProduct.bayId || activeProduct.departmentId}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                                {activeProduct.category}
+                              </p>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">•</span>
+                              <div className={`flex items-center gap-1 ${(activeProduct.stockCount ?? 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                <Package size={10} />
+                                <p className="text-[9px] font-bold uppercase tracking-wider">
+                                  Stock: {activeProduct.stockCount ?? 0}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>

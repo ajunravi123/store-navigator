@@ -4,252 +4,357 @@
     "name": "Organic Whole Milk",
     "category": "Dairy",
     "departmentId": "S1",
+    "bayId": "S1",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A1",
     "shelfId": "S1-A",
     "levels": [
       0,
       1,
       2
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/KlrTYcRXgsZmMLPx.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/KlrTYcRXgsZmMLPx.png",
+    "sku": "MILK-ORG-001",
+    "stockCount": 100
   },
   {
     "id": "P2",
     "name": "Blueberry Yogurt",
     "category": "Dairy",
     "departmentId": "S1",
+    "bayId": "S1",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A1",
     "shelfId": "S1-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/USlGGiKIQFHKNZGb.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/USlGGiKIQFHKNZGb.png",
+    "sku": "YOG-BLU-002",
+    "stockCount": 100
   },
   {
     "id": "P3",
     "name": "Cheddar Block",
     "category": "Deli",
     "departmentId": "S2",
+    "bayId": "S2",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A1",
     "shelfId": "S2-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ohFNuPOYtAEgGBgt.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ohFNuPOYtAEgGBgt.png",
+    "sku": "CHED-BLK-003",
+    "stockCount": 100
   },
   {
     "id": "P4",
     "name": "Frozen Pepperoni Pizza",
     "category": "Frozen",
     "departmentId": "S3",
+    "bayId": "S3",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A1",
     "shelfId": "S3-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/RrKIoZzBwfExaVXJ.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/RrKIoZzBwfExaVXJ.png",
+    "sku": "PIZ-PEP-004",
+    "stockCount": 100
   },
   {
     "id": "P5",
     "name": "Honey Nut O's",
     "category": "Breakfast",
     "departmentId": "S4",
+    "bayId": "S4",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A2",
     "shelfId": "S4-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/vejuQHHmqyTlityb.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/vejuQHHmqyTlityb.png",
+    "sku": "CER-HNY-005",
+    "stockCount": 100
   },
   {
     "id": "P6",
     "name": "Spaghetti Pasta",
     "category": "Pantry",
     "departmentId": "S5",
+    "bayId": "S5",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A2",
     "shelfId": "S5-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/DrvNgruUtgUkRpws.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/DrvNgruUtgUkRpws.png",
+    "sku": "PAS-SPG-006",
+    "stockCount": 100
   },
   {
     "id": "P7",
     "name": "Tomato Basil Sauce",
     "category": "Pantry",
     "departmentId": "S5",
+    "bayId": "S5",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A2",
     "shelfId": "S5-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HxqpAUTMjnOguUXz.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HxqpAUTMjnOguUXz.png",
+    "sku": "SAU-TOM-007",
+    "stockCount": 100
   },
   {
     "id": "P8",
     "name": "Chicken Noodle Soup",
     "category": "Canned",
     "departmentId": "S6",
+    "bayId": "S6",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A2",
     "shelfId": "S6-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/NsMygnwfYcFNDczd.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/NsMygnwfYcFNDczd.png",
+    "sku": "CAN-CHK-008",
+    "stockCount": 100
   },
   {
     "id": "P9",
     "name": "Classic Potato Chips",
     "category": "Snacks",
     "departmentId": "S7",
+    "bayId": "S7",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A3",
     "shelfId": "S7-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HrbXAkOeeMcqLNLe.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HrbXAkOeeMcqLNLe.png",
+    "sku": "CHP-CLS-009",
+    "stockCount": 100
   },
   {
     "id": "P10",
     "name": "Sparkling Water 6pk",
     "category": "Beverages",
     "departmentId": "S8",
+    "bayId": "S8",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A3",
     "shelfId": "S8-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/MlGLTsqJUVyIaTFj.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/MlGLTsqJUVyIaTFj.png",
+    "sku": "WTR-SPK-010",
+    "stockCount": 100
   },
   {
     "id": "P11",
     "name": "Dark Chocolate Bar",
     "category": "Confectionery",
     "departmentId": "S9",
+    "bayId": "S9",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A3",
     "shelfId": "S9-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJbkuqVkxAbwtbhr.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJbkuqVkxAbwtbhr.png",
+    "sku": "CHC-DRK-011",
+    "stockCount": 100
   },
   {
     "id": "P12",
     "name": "Sourdough Loaf",
     "category": "Bakery",
     "departmentId": "S10",
+    "bayId": "S10",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A4",
     "shelfId": "S10-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/gnLqnNRnYhHQPmzj.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/gnLqnNRnYhHQPmzj.png",
+    "sku": "BRD-SRD-012",
+    "stockCount": 100
   },
   {
     "id": "P13",
     "name": "Fresh Bananas",
     "category": "Produce",
     "departmentId": "S11",
+    "bayId": "S11",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A4",
     "shelfId": "S11-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/fJjRZqkQgrSbPKQP.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/fJjRZqkQgrSbPKQP.png",
+    "sku": "FRT-BAN-013",
+    "stockCount": 100
   },
   {
     "id": "P14",
     "name": "Pro Gaming Laptop",
     "category": "Electronics",
     "departmentId": "S12",
+    "bayId": "S12",
+    "zoneId": "Z2",
+    "aisleId": "Z2-A1",
     "shelfId": "S12-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/IuIjkVpuAjviGAAr.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/IuIjkVpuAjviGAAr.png",
+    "sku": "LAP-GAM-014",
+    "stockCount": 100
   },
   {
     "id": "P15",
     "name": "Smartphone Ultra",
     "category": "Electronics",
     "departmentId": "S13",
+    "bayId": "S13",
+    "zoneId": "Z2",
+    "aisleId": "Z2-A1",
     "shelfId": "S13-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/raeZhHdzRPczTHkB.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/raeZhHdzRPczTHkB.png",
+    "sku": "PHN-ULT-015",
+    "stockCount": 100
   },
   {
     "id": "P16",
     "name": "65\" OLED 4K TV",
     "category": "Electronics",
     "departmentId": "S14",
+    "bayId": "S14",
+    "zoneId": "Z2",
+    "aisleId": "Z2-A1",
     "shelfId": "S14-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/xbqVtCEGApjgAhvO.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/xbqVtCEGApjgAhvO.png",
+    "sku": "TV-OLED-016",
+    "stockCount": 100
   },
   {
     "id": "P17",
     "name": "Cast Iron Skillet",
     "category": "Home",
     "departmentId": "S15",
+    "bayId": "S15",
+    "zoneId": "Z2",
+    "aisleId": "Z2-A2",
     "shelfId": "S15-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ClhjHFDZzlXFrlvv.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ClhjHFDZzlXFrlvv.png",
+    "sku": "SKL-CST-017",
+    "stockCount": 100
   },
   {
     "id": "P18",
     "name": "Robot Vacuum Cleaner",
     "category": "Home",
     "departmentId": "S16",
+    "bayId": "S16",
+    "zoneId": "Z2",
+    "aisleId": "Z2-A2",
     "shelfId": "S16-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/nCsaZKnnEbxNpzDs.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/nCsaZKnnEbxNpzDs.png",
+    "sku": "VAC-ROB-018",
+    "stockCount": 100
   },
   {
     "id": "P19",
     "name": "Legendary Action Figure",
     "category": "Toys",
     "departmentId": "S17",
+    "bayId": "S17",
+    "zoneId": "Z2",
+    "aisleId": "Z2-A3",
     "shelfId": "S17-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJzzGGbAdSoZdLRV.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJzzGGbAdSoZdLRV.png",
+    "sku": "TOY-ACT-019",
+    "stockCount": 100
   },
   {
     "id": "P20",
     "name": "Space Strategy Game",
     "category": "Games",
     "departmentId": "S18",
+    "bayId": "S18",
+    "zoneId": "Z2",
+    "aisleId": "Z2-A3",
     "shelfId": "S18-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/zfDTeZCCtgZoYDrw.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/zfDTeZCCtgZoYDrw.png",
+    "sku": "GAM-STR-020",
+    "stockCount": 100
   },
   {
     "id": "P21",
     "name": "RPG Master Edition PS5",
     "category": "Games",
     "departmentId": "S19",
+    "bayId": "S19",
+    "zoneId": "Z2",
+    "aisleId": "Z2-A3",
     "shelfId": "S19-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/PIIApjZksxBabRZY.png"
+    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/PIIApjZksxBabRZY.png",
+    "sku": "GAM-RPG-021",
+    "stockCount": 100
   }
 ]

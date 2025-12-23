@@ -62,6 +62,8 @@ export interface Product {
   shelfId: string;
   image?: string;
   levels?: number[];
+  sku?: string;
+  stockCount?: number;
   // Legacy fields for backward compatibility
   departmentId?: string;
 }

@@ -22,441 +22,495 @@
       "z": 5
     }
   ],
-  "departments": [
+  "zones": [
     {
-      "id": "S1",
-      "name": "Fresh Milk",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 11,
-      "column": 5,
-      "width": 11,
-      "depth": 4,
-      "shelves": [
+      "id": "Z1",
+      "name": "Grocery Zone",
+      "aisles": [
         {
-          "id": "S1-A",
-          "name": "Organic",
-          "levelCount": 5,
-          "closedSides": [
-            "left",
-            "back"
+          "id": "Z1-A1",
+          "name": "Aisle 1",
+          "bays": [
+            {
+              "id": "S1",
+              "name": "Fresh Milk",
+              "floor": 0,
+              "row": 11,
+              "column": 5,
+              "width": 11,
+              "depth": 4,
+              "shelves": [
+                {
+                  "id": "S1-A",
+                  "name": "Organic",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left",
+                    "back"
+                  ]
+                },
+                {
+                  "id": "S1-B",
+                  "name": "Standard",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S1-C",
+                  "name": "Shelf C"
+                },
+                {
+                  "id": "S1-D",
+                  "name": "Shelf D"
+                }
+              ],
+              "levelCount": 5,
+              "shelfSpacing": 1
+            },
+            {
+              "id": "S2",
+              "name": "Cheese & Deli",
+              "floor": 0,
+              "row": 18,
+              "column": 5,
+              "width": 8,
+              "depth": 4,
+              "shelves": [
+                {
+                  "id": "S2-A",
+                  "name": "Imported",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S2-B",
+                  "name": "Local",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S3",
+              "name": "Frozen Meals",
+              "floor": 0,
+              "row": 30,
+              "column": 5,
+              "width": 8,
+              "depth": 6,
+              "shelves": [
+                {
+                  "id": "S3-A",
+                  "name": "Pizza",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "front",
+                    "back",
+                    "left"
+                  ]
+                },
+                {
+                  "id": "S3-B",
+                  "name": "Veggie",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5,
+              "shelfSpacing": 3
+            }
           ]
         },
         {
-          "id": "S1-B",
-          "name": "Standard",
-          "levelCount": 5
-        },
-        {
-          "id": "S1-C",
-          "name": "Shelf C"
-        },
-        {
-          "id": "S1-D",
-          "name": "Shelf D"
-        }
-      ],
-      "shelfSpacing": 1
-    },
-    {
-      "id": "S2",
-      "name": "Cheese & Deli",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 18,
-      "column": 5,
-      "width": 8,
-      "depth": 4,
-      "shelves": [
-        {
-          "id": "S2-A",
-          "name": "Imported",
-          "levelCount": 5
-        },
-        {
-          "id": "S2-B",
-          "name": "Local",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S3",
-      "name": "Frozen Meals",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 30,
-      "column": 5,
-      "width": 8,
-      "depth": 6,
-      "shelves": [
-        {
-          "id": "S3-A",
-          "name": "Pizza",
-          "levelCount": 5,
-          "closedSides": [
-            "front",
-            "back",
-            "left"
+          "id": "Z1-A2",
+          "name": "Aisle 2",
+          "bays": [
+            {
+              "id": "S4",
+              "name": "Cereal & Breakfast",
+              "floor": 0,
+              "row": 10,
+              "column": 18,
+              "width": 6,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "S4-A",
+                  "name": "Kids",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S4-B",
+                  "name": "Healthy",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S5",
+              "name": "Pasta & Sauces",
+              "floor": 0,
+              "row": 22,
+              "column": 18,
+              "width": 6,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "S5-A",
+                  "name": "Italian",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S5-B",
+                  "name": "Asian",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S6",
+              "name": "Canned Goods",
+              "floor": 0,
+              "row": 34,
+              "column": 18,
+              "width": 6,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "S6-A",
+                  "name": "Soups",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S6-B",
+                  "name": "Vegetables",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            }
           ]
         },
         {
-          "id": "S3-B",
-          "name": "Veggie",
-          "levelCount": 5
-        }
-      ],
-      "shelfSpacing": 3
-    },
-    {
-      "id": "S4",
-      "name": "Cereal & Breakfast",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 10,
-      "column": 18,
-      "width": 6,
-      "depth": 8,
-      "shelves": [
-        {
-          "id": "S4-A",
-          "name": "Kids",
-          "levelCount": 5
+          "id": "Z1-A3",
+          "name": "Aisle 3",
+          "bays": [
+            {
+              "id": "S7",
+              "name": "Salty Snacks",
+              "floor": 0,
+              "row": 10,
+              "column": 30,
+              "width": 6,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "S7-A",
+                  "name": "Chips",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S7-B",
+                  "name": "Popcorn",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S8",
+              "name": "Soft Drinks",
+              "floor": 0,
+              "row": 22,
+              "column": 30,
+              "width": 6,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "S8-A",
+                  "name": "Cola",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S8-B",
+                  "name": "Water",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S9",
+              "name": "Confectionery",
+              "floor": 0,
+              "row": 34,
+              "column": 30,
+              "width": 6,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "S9-A",
+                  "name": "Chocolate",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S9-B",
+                  "name": "Candy",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
         },
         {
-          "id": "S4-B",
-          "name": "Healthy",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S5",
-      "name": "Pasta & Sauces",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 22,
-      "column": 18,
-      "width": 6,
-      "depth": 8,
-      "shelves": [
-        {
-          "id": "S5-A",
-          "name": "Italian",
-          "levelCount": 5
-        },
-        {
-          "id": "S5-B",
-          "name": "Asian",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S6",
-      "name": "Canned Goods",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 34,
-      "column": 18,
-      "width": 6,
-      "depth": 8,
-      "shelves": [
-        {
-          "id": "S6-A",
-          "name": "Soups",
-          "levelCount": 5
-        },
-        {
-          "id": "S6-B",
-          "name": "Vegetables",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S7",
-      "name": "Salty Snacks",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 10,
-      "column": 30,
-      "width": 6,
-      "depth": 8,
-      "shelves": [
-        {
-          "id": "S7-A",
-          "name": "Chips",
-          "levelCount": 5
-        },
-        {
-          "id": "S7-B",
-          "name": "Popcorn",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S8",
-      "name": "Soft Drinks",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 22,
-      "column": 30,
-      "width": 6,
-      "depth": 8,
-      "shelves": [
-        {
-          "id": "S8-A",
-          "name": "Cola",
-          "levelCount": 5
-        },
-        {
-          "id": "S8-B",
-          "name": "Water",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S9",
-      "name": "Confectionery",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 34,
-      "column": 30,
-      "width": 6,
-      "depth": 8,
-      "shelves": [
-        {
-          "id": "S9-A",
-          "name": "Chocolate",
-          "levelCount": 5
-        },
-        {
-          "id": "S9-B",
-          "name": "Candy",
-          "levelCount": 5
+          "id": "Z1-A4",
+          "name": "Aisle 4",
+          "bays": [
+            {
+              "id": "S10",
+              "name": "Bakery",
+              "floor": 0,
+              "row": 10,
+              "column": 42,
+              "width": 6,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "S10-A",
+                  "name": "Breads",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S10-B",
+                  "name": "Pastries",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S11",
+              "name": "Fresh Fruit",
+              "floor": 0,
+              "row": 25,
+              "column": 42,
+              "width": 6,
+              "depth": 6,
+              "shelves": [
+                {
+                  "id": "S11-A",
+                  "name": "Tropical",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S11-B",
+                  "name": "Apples",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
         }
       ]
     },
     {
-      "id": "S10",
-      "name": "Bakery",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 10,
-      "column": 42,
-      "width": 6,
-      "depth": 10,
-      "shelves": [
+      "id": "Z2",
+      "name": "Electronics & Home Zone",
+      "aisles": [
         {
-          "id": "S10-A",
-          "name": "Breads",
-          "levelCount": 5
+          "id": "Z2-A1",
+          "name": "Aisle 1",
+          "bays": [
+            {
+              "id": "S12",
+              "name": "Computers",
+              "floor": 1,
+              "row": 10,
+              "column": 5,
+              "width": 12,
+              "depth": 4,
+              "shelves": [
+                {
+                  "id": "S12-A",
+                  "name": "Gaming Laptops",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S12-B",
+                  "name": "Business",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S13",
+              "name": "Mobile Tech",
+              "floor": 1,
+              "row": 18,
+              "column": 5,
+              "width": 12,
+              "depth": 4,
+              "shelves": [
+                {
+                  "id": "S13-A",
+                  "name": "Smartphones",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S13-B",
+                  "name": "Tablets",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S14",
+              "name": "TV & Audio",
+              "floor": 1,
+              "row": 30,
+              "column": 5,
+              "width": 12,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "S14-A",
+                  "name": "OLED TVs",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S14-B",
+                  "name": "Soundbars",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
         },
         {
-          "id": "S10-B",
-          "name": "Pastries",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S11",
-      "name": "Fresh Fruit",
-      "levelCount": 5,
-      "floor": 0,
-      "row": 25,
-      "column": 42,
-      "width": 6,
-      "depth": 6,
-      "shelves": [
-        {
-          "id": "S11-A",
-          "name": "Tropical",
-          "levelCount": 5
+          "id": "Z2-A2",
+          "name": "Aisle 2",
+          "bays": [
+            {
+              "id": "S15",
+              "name": "Kitchenware",
+              "floor": 1,
+              "row": 10,
+              "column": 22,
+              "width": 8,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "S15-A",
+                  "name": "Cookware",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S15-B",
+                  "name": "Cutlery",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S16",
+              "name": "Appliances",
+              "floor": 1,
+              "row": 25,
+              "column": 22,
+              "width": 8,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "S16-A",
+                  "name": "Vacuums",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S16-B",
+                  "name": "Laundry",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S17",
+              "name": "Action Figures",
+              "floor": 1,
+              "row": 10,
+              "column": 35,
+              "width": 10,
+              "depth": 6,
+              "shelves": [
+                {
+                  "id": "S17-A",
+                  "name": "Collectibles",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S17-B",
+                  "name": "Retro",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
         },
         {
-          "id": "S11-B",
-          "name": "Apples",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S12",
-      "name": "Computers",
-      "levelCount": 5,
-      "floor": 1,
-      "row": 10,
-      "column": 5,
-      "width": 12,
-      "depth": 4,
-      "shelves": [
-        {
-          "id": "S12-A",
-          "name": "Gaming Laptops",
-          "levelCount": 5
-        },
-        {
-          "id": "S12-B",
-          "name": "Business",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S13",
-      "name": "Mobile Tech",
-      "levelCount": 5,
-      "floor": 1,
-      "row": 18,
-      "column": 5,
-      "width": 12,
-      "depth": 4,
-      "shelves": [
-        {
-          "id": "S13-A",
-          "name": "Smartphones",
-          "levelCount": 5
-        },
-        {
-          "id": "S13-B",
-          "name": "Tablets",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S14",
-      "name": "TV & Audio",
-      "levelCount": 5,
-      "floor": 1,
-      "row": 30,
-      "column": 5,
-      "width": 12,
-      "depth": 8,
-      "shelves": [
-        {
-          "id": "S14-A",
-          "name": "OLED TVs",
-          "levelCount": 5
-        },
-        {
-          "id": "S14-B",
-          "name": "Soundbars",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S15",
-      "name": "Kitchenware",
-      "levelCount": 5,
-      "floor": 1,
-      "row": 10,
-      "column": 22,
-      "width": 8,
-      "depth": 10,
-      "shelves": [
-        {
-          "id": "S15-A",
-          "name": "Cookware",
-          "levelCount": 5
-        },
-        {
-          "id": "S15-B",
-          "name": "Cutlery",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S16",
-      "name": "Appliances",
-      "levelCount": 5,
-      "floor": 1,
-      "row": 25,
-      "column": 22,
-      "width": 8,
-      "depth": 10,
-      "shelves": [
-        {
-          "id": "S16-A",
-          "name": "Vacuums",
-          "levelCount": 5
-        },
-        {
-          "id": "S16-B",
-          "name": "Laundry",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S17",
-      "name": "Action Figures",
-      "levelCount": 5,
-      "floor": 1,
-      "row": 10,
-      "column": 35,
-      "width": 10,
-      "depth": 6,
-      "shelves": [
-        {
-          "id": "S17-A",
-          "name": "Collectibles",
-          "levelCount": 5
-        },
-        {
-          "id": "S17-B",
-          "name": "Retro",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S18",
-      "name": "Board Games",
-      "levelCount": 5,
-      "floor": 1,
-      "row": 20,
-      "column": 35,
-      "width": 10,
-      "depth": 6,
-      "shelves": [
-        {
-          "id": "S18-A",
-          "name": "Strategy",
-          "levelCount": 5
-        },
-        {
-          "id": "S18-B",
-          "name": "Family",
-          "levelCount": 5
-        }
-      ]
-    },
-    {
-      "id": "S19",
-      "name": "Video Games",
-      "levelCount": 5,
-      "floor": 1,
-      "row": 30,
-      "column": 35,
-      "width": 10,
-      "depth": 6,
-      "shelves": [
-        {
-          "id": "S19-A",
-          "name": "PS5",
-          "levelCount": 5
-        },
-        {
-          "id": "S19-B",
-          "name": "Switch",
-          "levelCount": 5
+          "id": "Z2-A3",
+          "name": "Aisle 3",
+          "bays": [
+            {
+              "id": "S18",
+              "name": "Board Games",
+              "floor": 1,
+              "row": 20,
+              "column": 35,
+              "width": 10,
+              "depth": 6,
+              "shelves": [
+                {
+                  "id": "S18-A",
+                  "name": "Strategy",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S18-B",
+                  "name": "Family",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            },
+            {
+              "id": "S19",
+              "name": "Video Games",
+              "floor": 1,
+              "row": 30,
+              "column": 35,
+              "width": 10,
+              "depth": 6,
+              "shelves": [
+                {
+                  "id": "S19-A",
+                  "name": "PS5",
+                  "levelCount": 5
+                },
+                {
+                  "id": "S19-B",
+                  "name": "Switch",
+                  "levelCount": 5
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
         }
       ]
     }

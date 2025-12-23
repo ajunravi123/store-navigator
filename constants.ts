@@ -356,7 +356,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S1'),
     shelfId: 'S1-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/KlrTYcRXgsZmMLPx.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/KlrTYcRXgsZmMLPx.png',
+    sku: 'MILK-ORG-001',
+    stockCount: 100
   },
   {
     id: 'P2',
@@ -365,7 +367,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S1'),
     shelfId: 'S1-B',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/USlGGiKIQFHKNZGb.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/USlGGiKIQFHKNZGb.png',
+    sku: 'YOG-BLU-002',
+    stockCount: 100
   },
   {
     id: 'P3',
@@ -374,7 +378,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S2'),
     shelfId: 'S2-B',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ohFNuPOYtAEgGBgt.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ohFNuPOYtAEgGBgt.png',
+    sku: 'CHED-BLK-003',
+    stockCount: 100
   },
   {
     id: 'P4',
@@ -383,7 +389,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S3'),
     shelfId: 'S3-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/RrKIoZzBwfExaVXJ.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/RrKIoZzBwfExaVXJ.png',
+    sku: 'PIZ-PEP-004',
+    stockCount: 100
   },
   {
     id: 'P5',
@@ -392,7 +400,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S4'),
     shelfId: 'S4-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/vejuQHHmqyTlityb.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/vejuQHHmqyTlityb.png',
+    sku: 'CER-HNY-005',
+    stockCount: 100
   },
   {
     id: 'P6',
@@ -401,7 +411,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S5'),
     shelfId: 'S5-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/DrvNgruUtgUkRpws.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/DrvNgruUtgUkRpws.png',
+    sku: 'PAS-SPG-006',
+    stockCount: 100
   },
   {
     id: 'P7',
@@ -410,7 +422,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S5'),
     shelfId: 'S5-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HxqpAUTMjnOguUXz.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HxqpAUTMjnOguUXz.png',
+    sku: 'SAU-TOM-007',
+    stockCount: 100
   },
   {
     id: 'P8',
@@ -419,7 +433,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S6'),
     shelfId: 'S6-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/NsMygnwfYcFNDczd.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/NsMygnwfYcFNDczd.png',
+    sku: 'CAN-CHK-008',
+    stockCount: 100
   },
   {
     id: 'P9',
@@ -428,7 +444,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S7'),
     shelfId: 'S7-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HrbXAkOeeMcqLNLe.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HrbXAkOeeMcqLNLe.png',
+    sku: 'CHP-CLS-009',
+    stockCount: 100
   },
   {
     id: 'P10',
@@ -437,7 +455,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S8'),
     shelfId: 'S8-B',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/MlGLTsqJUVyIaTFj.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/MlGLTsqJUVyIaTFj.png',
+    sku: 'WTR-SPK-010',
+    stockCount: 100
   },
   {
     id: 'P11',
@@ -446,7 +466,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S9'),
     shelfId: 'S9-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJbkuqVkxAbwtbhr.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJbkuqVkxAbwtbhr.png',
+    sku: 'CHC-DRK-011',
+    stockCount: 100
   },
   {
     id: 'P12',
@@ -455,7 +477,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S10'),
     shelfId: 'S10-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/gnLqnNRnYhHQPmzj.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/gnLqnNRnYhHQPmzj.png',
+    sku: 'BRD-SRD-012',
+    stockCount: 100
   },
   {
     id: 'P13',
@@ -464,7 +488,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S11'),
     shelfId: 'S11-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/fJjRZqkQgrSbPKQP.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/fJjRZqkQgrSbPKQP.png',
+    sku: 'FRT-BAN-013',
+    stockCount: 100
   },
   {
     id: 'P14',
@@ -473,7 +499,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S12'),
     shelfId: 'S12-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/IuIjkVpuAjviGAAr.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/IuIjkVpuAjviGAAr.png',
+    sku: 'LAP-GAM-014',
+    stockCount: 100
   },
   {
     id: 'P15',
@@ -482,7 +510,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S13'),
     shelfId: 'S13-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/raeZhHdzRPczTHkB.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/raeZhHdzRPczTHkB.png',
+    sku: 'PHN-ULT-015',
+    stockCount: 100
   },
   {
     id: 'P16',
@@ -491,7 +521,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S14'),
     shelfId: 'S14-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/xbqVtCEGApjgAhvO.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/xbqVtCEGApjgAhvO.png',
+    sku: 'TV-OLED-016',
+    stockCount: 100
   },
   {
     id: 'P17',
@@ -500,7 +532,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S15'),
     shelfId: 'S15-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ClhjHFDZzlXFrlvv.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ClhjHFDZzlXFrlvv.png',
+    sku: 'SKL-CST-017',
+    stockCount: 100
   },
   {
     id: 'P18',
@@ -509,7 +543,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S16'),
     shelfId: 'S16-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/nCsaZKnnEbxNpzDs.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/nCsaZKnnEbxNpzDs.png',
+    sku: 'VAC-ROB-018',
+    stockCount: 100
   },
   {
     id: 'P19',
@@ -518,7 +554,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S17'),
     shelfId: 'S17-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJzzGGbAdSoZdLRV.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJzzGGbAdSoZdLRV.png',
+    sku: 'TOY-ACT-019',
+    stockCount: 100
   },
   {
     id: 'P20',
@@ -527,7 +565,9 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S18'),
     shelfId: 'S18-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/zfDTeZCCtgZoYDrw.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/zfDTeZCCtgZoYDrw.png',
+    sku: 'GAM-STR-020',
+    stockCount: 100
   },
   {
     id: 'P21',
@@ -536,6 +576,8 @@ export const DEFAULT_PRODUCTS: Product[] = [
     ...getLocation('S19'),
     shelfId: 'S19-A',
     levels: [0, 1],
-    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/PIIApjZksxBabRZY.png'
+    image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/PIIApjZksxBabRZY.png',
+    sku: 'GAM-RPG-021',
+    stockCount: 100
   }
 ];
