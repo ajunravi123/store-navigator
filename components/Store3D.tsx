@@ -559,6 +559,8 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
 
   const lastTargetKeyRef = useRef<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const userInteractingRef = useRef(false);
+  const interactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const targetPointRef = useRef<THREE.Vector3>(new THREE.Vector3());
 
   const defaultTarget = useMemo(() => new THREE.Vector3(0, 0, 0), []);
@@ -568,6 +570,45 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
   }, [config.gridSize]);
 
   useEffect(() => {
+    if (!controls) return;
+
+    const orbitControls = controls as any;
+    
+    // Track user interaction
+    const onStart = () => {
+      userInteractingRef.current = true;
+      setIsAnimating(false); // Stop auto-animation when user interacts
+      if (interactionTimeoutRef.current) {
+        clearTimeout(interactionTimeoutRef.current);
+      }
+    };
+
+    const onEnd = () => {
+      // Wait a bit after user stops interacting before allowing auto-animation again
+      if (interactionTimeoutRef.current) {
+        clearTimeout(interactionTimeoutRef.current);
+      }
+      interactionTimeoutRef.current = setTimeout(() => {
+        userInteractingRef.current = false;
+      }, 2000); // 2 second delay after user stops interacting
+    };
+
+    orbitControls.addEventListener('start', onStart);
+    orbitControls.addEventListener('end', onEnd);
+
+    return () => {
+      orbitControls.removeEventListener('start', onStart);
+      orbitControls.removeEventListener('end', onEnd);
+      if (interactionTimeoutRef.current) {
+        clearTimeout(interactionTimeoutRef.current);
+      }
+    };
+  }, [controls]);
+
+  useEffect(() => {
+    // Only animate if user is not interacting
+    if (userInteractingRef.current) return;
+
     const targetKey = targetPoint ? `${targetPoint.x},${targetPoint.y},${targetPoint.z}` : 'default';
     if (targetKey !== lastTargetKeyRef.current) {
       lastTargetKeyRef.current = targetKey;
@@ -578,7 +619,7 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
   }, [targetPoint, defaultTarget]);
 
   useFrame(() => {
-    if (!controls || !isAnimating) return;
+    if (!controls || !isAnimating || userInteractingRef.current) return;
 
     const target = targetPoint ? targetPointRef.current : defaultTarget;
     const posTarget = targetPoint
