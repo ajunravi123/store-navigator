@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { StoreConfig, Product, Department, Shelf } from '../types';
+import { StoreConfig, Product, Bay, Shelf, Zone, Aisle } from '../types';
+import { getAllBays, findBayById, getAisleIdForBay } from '../utils/storeHelpers';
 import { Plus, Trash2, Edit2, ChevronDown, ChevronUp, Box, MapPin, Layers, Package, Zap } from 'lucide-react';
 
 interface AdminFormProps {
@@ -10,6 +11,8 @@ interface AdminFormProps {
     onDepartmentExpand: (id: string | null) => void;
     expandedProductId: string | null;
     onProductExpand: (id: string | null) => void;
+    onAisleSelect?: (id: string | null) => void;
+    onShelfSelect?: (id: string | null) => void;
     onChange: (store: StoreConfig, prods: Product[]) => void;
 }
 
@@ -83,11 +86,15 @@ const AdminForm: React.FC<AdminFormProps> = ({
     onDepartmentExpand,
     expandedProductId,
     onProductExpand,
+    onAisleSelect,
+    onShelfSelect,
     onChange
 }) => {
     const [activeTab, setActiveTab] = useState<'store' | 'products'>('store');
     const [gridExpanded, setGridExpanded] = useState(false);
     const [elevatorsExpanded, setElevatorsExpanded] = useState(false);
+    const [expandedZoneId, setExpandedZoneId] = useState<string | null>(null);
+    const [expandedAisleId, setExpandedAisleId] = useState<string | null>(null);
 
     const updateStore = (updates: Partial<StoreConfig>) => {
         onChange({ ...storeConfig, ...updates }, products);
@@ -97,42 +104,144 @@ const AdminForm: React.FC<AdminFormProps> = ({
         onChange(storeConfig, newProducts);
     };
 
-    // Department Handlers
-    const addDepartment = () => {
-        const id = `S${storeConfig.departments.length + 1}`;
-        const newDepartment: Department = {
-            id,
-            name: 'New Department',
+    // Zone Handlers
+    const addZone = () => {
+        const zoneNum = storeConfig.zones.length + 1;
+        const newZone: Zone = {
+            id: `Z${zoneNum}`,
+            name: `Zone ${zoneNum}`,
+            aisles: []
+        };
+        updateStore({ zones: [...storeConfig.zones, newZone] });
+        setExpandedZoneId(newZone.id);
+    };
+
+    const updateZone = (id: string, updates: Partial<Zone>) => {
+        const zones = storeConfig.zones.map(z => z.id === id ? { ...z, ...updates } : z);
+        updateStore({ zones });
+    };
+
+    const removeZone = (id: string) => {
+        const zones = storeConfig.zones.filter(z => z.id !== id);
+        updateStore({ zones });
+        if (expandedZoneId === id) setExpandedZoneId(null);
+    };
+
+    // Aisle Handlers
+    const addAisle = (zoneId: string) => {
+        const zone = storeConfig.zones.find(z => z.id === zoneId);
+        if (!zone) return;
+        
+        const aisleNum = zone.aisles.length + 1;
+        const newAisle: Aisle = {
+            id: `${zoneId}-A${aisleNum}`,
+            name: `Aisle ${aisleNum}`,
+            bays: []
+        };
+        
+        const zones = storeConfig.zones.map(z => 
+            z.id === zoneId ? { ...z, aisles: [...z.aisles, newAisle] } : z
+        );
+        updateStore({ zones });
+        setExpandedAisleId(newAisle.id);
+        setExpandedZoneId(zoneId);
+    };
+
+    const updateAisle = (zoneId: string, aisleId: string, updates: Partial<Aisle>) => {
+        const zones = storeConfig.zones.map(zone => 
+            zone.id === zoneId ? {
+                ...zone,
+                aisles: zone.aisles.map(aisle => aisle.id === aisleId ? { ...aisle, ...updates } : aisle)
+            } : zone
+        );
+        updateStore({ zones });
+    };
+
+    const removeAisle = (zoneId: string, aisleId: string) => {
+        const zones = storeConfig.zones.map(zone => 
+            zone.id === zoneId ? {
+                ...zone,
+                aisles: zone.aisles.filter(a => a.id !== aisleId)
+            } : zone
+        );
+        updateStore({ zones });
+        if (expandedAisleId === aisleId) setExpandedAisleId(null);
+    };
+
+    // Bay Handlers
+    const allBays = getAllBays(storeConfig);
+    
+    const addBay = (zoneId: string, aisleId: string) => {
+        const zone = storeConfig.zones.find(z => z.id === zoneId);
+        const aisle = zone?.aisles.find(a => a.id === aisleId);
+        if (!aisle) return;
+
+        const newBayId = `B${allBays.length + 1}`;
+        const newBay: Bay = {
+            id: newBayId,
+            name: 'New Bay',
             floor: 0,
             row: 10,
             column: 10,
             width: 6,
             depth: 4,
-            shelves: [{ id: `${id}-A`, name: 'Shelf A' }]
+            shelves: [{ id: `${newBayId}-A`, name: 'Shelf A' }]
         };
-        updateStore({ departments: [...storeConfig.departments, newDepartment] });
-        onDepartmentExpand(id);
+        
+        const zones = storeConfig.zones.map(z => 
+            z.id === zoneId ? {
+                ...z,
+                aisles: z.aisles.map(a => 
+                    a.id === aisleId ? { ...a, bays: [...a.bays, newBay] } : a
+                )
+            } : z
+        );
+        
+        updateStore({ zones });
+        onDepartmentExpand(newBayId);
+        setExpandedAisleId(aisleId);
+        setExpandedZoneId(zoneId);
     };
 
-    const updateDepartment = (id: string, updates: Partial<Department>) => {
-        const departments = storeConfig.departments.map(d => d.id === id ? { ...d, ...updates } : d);
-        updateStore({ departments });
+    const updateBay = (id: string, updates: Partial<Bay>) => {
+        const zones = storeConfig.zones.map(zone => ({
+            ...zone,
+            aisles: zone.aisles.map(aisle => ({
+                ...aisle,
+                bays: aisle.bays.map(bay => bay.id === id ? { ...bay, ...updates } : bay)
+            }))
+        }));
+        updateStore({ zones });
     };
 
-    const removeDepartment = (id: string) => {
-        const departments = storeConfig.departments.filter(d => d.id !== id);
-        updateStore({ departments });
-        if (expandedDepartmentId === id) onDepartmentExpand(null);
+    const removeBay = (zoneId: string, aisleId: string, bayId: string) => {
+        const zones = storeConfig.zones.map(zone => 
+            zone.id === zoneId ? {
+                ...zone,
+                aisles: zone.aisles.map(aisle => 
+                    aisle.id === aisleId ? {
+                        ...aisle,
+                        bays: aisle.bays.filter(bay => bay.id !== bayId)
+                    } : aisle
+                ).filter(aisle => aisle.bays.length > 0) // Remove empty aisles
+            } : zone
+        ).filter(zone => zone.aisles.length > 0); // Remove empty zones
+        
+        updateStore({ zones });
+        if (expandedDepartmentId === bayId) onDepartmentExpand(null);
     };
 
     // Product Handlers
     const addProduct = () => {
+        const firstBay = allBays[0];
         const newProduct: Product = {
             id: `P${products.length + 1}`,
             name: 'New Product',
             category: 'Uncategorized',
-            departmentId: storeConfig.departments[0]?.id || '',
-            shelfId: storeConfig.departments[0]?.shelves[0]?.id || '',
+            zoneId: 'Z1',
+            aisleId: 'Z1-A1',
+            bayId: firstBay?.id || '',
+            shelfId: firstBay?.shelves[0]?.id || '',
             image: 'https://picsum.photos/400/400'
         };
         updateProducts([...products, newProduct]);
@@ -307,12 +416,12 @@ const AdminForm: React.FC<AdminFormProps> = ({
                             )}
                         </div>
 
-                        {/* Departments List */}
+                        {/* Zones List */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Departments ({storeConfig.departments.length})</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Zones ({storeConfig.zones.length})</label>
                                 <button
-                                    onClick={addDepartment}
+                                    onClick={addZone}
                                     className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100"
                                 >
                                     <Plus size={16} />
@@ -320,49 +429,178 @@ const AdminForm: React.FC<AdminFormProps> = ({
                             </div>
 
                             <div className="space-y-3">
-                                {storeConfig.departments.map((dept) => (
-                                    <div key={dept.id} className="border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+                                {storeConfig.zones.map((zone) => (
+                                    <div key={zone.id} className="border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+                                        {/* Zone Header */}
                                         <div
                                             className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
-                                            onClick={() => onDepartmentExpand(expandedDepartmentId === dept.id ? null : dept.id)}
+                                            onClick={() => setExpandedZoneId(expandedZoneId === zone.id ? null : zone.id)}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black">
-                                                    {dept.id}
+                                                <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-[10px] font-black">
+                                                    {zone.id}
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-sm font-black text-slate-800">{dept.name}</h4>
-                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Floor {dept.floor} • {dept.shelves.length} Shelves</span>
+                                                    <h4 className="text-sm font-black text-slate-800">{zone.name}</h4>
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{zone.aisles.length} Aisles</span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); removeDepartment(dept.id); }}
+                                                    onClick={(e) => { e.stopPropagation(); removeZone(zone.id); }}
                                                     className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
-                                                {expandedDepartmentId === dept.id ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                                                {expandedZoneId === zone.id ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
                                             </div>
                                         </div>
 
-                                        {expandedDepartmentId === dept.id && (
+                                        {expandedZoneId === zone.id && (
                                             <div className="p-5 bg-slate-50/50 border-t border-slate-100 space-y-5 animate-in slide-in-from-top-2 duration-200">
+                                                {/* Zone Name Edit */}
+                                                <div>
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase mb-1.5 block">Zone Name</span>
+                                                    <input
+                                                        type="text"
+                                                        value={zone.name}
+                                                        onChange={(e) => updateZone(zone.id, { name: e.target.value })}
+                                                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
+                                                    />
+                                                </div>
+
+                                                {/* Aisles List */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Aisles ({zone.aisles.length})</span>
+                                                        <button
+                                                            onClick={() => addAisle(zone.id)}
+                                                            className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase"
+                                                        >
+                                                            + Add Aisle
+                                                        </button>
+                                                    </div>
+
+                                                    {zone.aisles.map((aisle) => (
+                                                        <div key={aisle.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                                                            {/* Aisle Header */}
+                                                            <div
+                                                                className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                                                                onClick={() => {
+                                                                    const newExpandedId = expandedAisleId === aisle.id ? null : aisle.id;
+                                                                    setExpandedAisleId(newExpandedId);
+                                                                    // Trigger camera focus on aisle
+                                                                    if (onAisleSelect) {
+                                                                        onAisleSelect(newExpandedId);
+                                                                    }
+                                                                    // Clear shelf selection when aisle is collapsed
+                                                                    if (!newExpandedId && onShelfSelect) {
+                                                                        onShelfSelect(null);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-6 h-6 bg-indigo-500 text-white rounded-lg flex items-center justify-center text-[9px] font-black">
+                                                                        {aisle.id.split('-').pop()}
+                                                                    </div>
+                                                                    <div>
+                                                                        <h5 className="text-xs font-black text-slate-800">{aisle.name}</h5>
+                                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{aisle.bays.length} Bays</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); removeAisle(zone.id, aisle.id); }}
+                                                                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                    {expandedAisleId === aisle.id ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                                                                </div>
+                                                            </div>
+
+                                                            {expandedAisleId === aisle.id && (
+                                                                <div className="p-4 bg-white border-t border-slate-100 space-y-4">
+                                                                    {/* Aisle Name Edit */}
+                                                                    <div>
+                                                                        <span className="text-[10px] text-slate-400 font-bold uppercase mb-1.5 block">Aisle Name</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={aisle.name}
+                                                                            onChange={(e) => updateAisle(zone.id, aisle.id, { name: e.target.value })}
+                                                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 transition-all"
+                                                                        />
+                                                                    </div>
+
+                                                                    {/* Bays List */}
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Bays ({aisle.bays.length})</span>
+                                                                            <button
+                                                                                onClick={() => addBay(zone.id, aisle.id)}
+                                                                                className="text-[9px] font-black text-indigo-600 hover:text-indigo-700 uppercase"
+                                                                            >
+                                                                                + Add Bay
+                                                                            </button>
+                                                                        </div>
+
+                                                                        {aisle.bays.map((bay) => (
+                                                                            <div key={bay.id} className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                                                                                <div
+                                                                                    className="flex items-center justify-between p-3 cursor-pointer hover:bg-white transition-colors"
+                                                                                    onClick={() => {
+                                                                                        const newExpandedId = expandedDepartmentId === bay.id ? null : bay.id;
+                                                                                        onDepartmentExpand(newExpandedId);
+                                                                                        // Trigger camera focus on bay and aisle
+                                                                                        if (onAisleSelect && newExpandedId) {
+                                                                                            const aisleId = getAisleIdForBay(storeConfig, newExpandedId);
+                                                                                            onAisleSelect(aisleId);
+                                                                                        } else if (onAisleSelect && !newExpandedId) {
+                                                                                            onAisleSelect(null);
+                                                                                        }
+                                                                                        // Clear shelf selection when bay is collapsed
+                                                                                        if (!newExpandedId && onShelfSelect) {
+                                                                                            onShelfSelect(null);
+                                                                                        }
+                                                                                    }}
+                                                                                >
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <div className="w-6 h-6 bg-slate-700 text-white rounded-lg flex items-center justify-center text-[9px] font-black">
+                                                                                            {bay.id}
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <h5 className="text-xs font-black text-slate-800">{bay.name}</h5>
+                                                                                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Floor {bay.floor} • {bay.shelves.length} Shelves</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <button
+                                                                                            onClick={(e) => { e.stopPropagation(); removeBay(zone.id, aisle.id, bay.id); }}
+                                                                                            className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                                                        >
+                                                                                            <Trash2 size={14} />
+                                                                                        </button>
+                                                                                        {expandedDepartmentId === bay.id ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {expandedDepartmentId === bay.id && (
+                                                                                    <div className="p-4 bg-white border-t border-slate-200 space-y-4">
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div>
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase mb-1.5 block">Department Name</span>
+                                                        <span className="text-[10px] text-slate-400 font-bold uppercase mb-1.5 block">Bay Name</span>
                                                         <input
                                                             type="text"
-                                                            value={dept.name}
-                                                            onChange={(e) => updateDepartment(dept.id, { name: e.target.value })}
+                                                            value={bay.name}
+                                                            onChange={(e) => updateBay(bay.id, { name: e.target.value })}
                                                             className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
                                                         />
                                                     </div>
                                                     <div>
                                                         <ValidatedInput
                                                             label="Floor"
-                                                            value={dept.floor}
-                                                            onChange={(val) => updateDepartment(dept.id, { floor: val })}
+                                                            value={bay.floor}
+                                                            onChange={(val) => updateBay(bay.id, { floor: val })}
                                                             className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
                                                             min={0}
                                                         />
@@ -372,30 +610,42 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                 <div className="grid grid-cols-4 gap-3 text-center">
                                                     <ValidatedInput
                                                         label="Row (Z)"
-                                                        value={dept.row}
-                                                        onChange={(val) => updateDepartment(dept.id, { row: val })}
+                                                        value={bay.row}
+                                                        onChange={(val) => updateBay(bay.id, { row: val })}
                                                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
                                                     />
                                                     <ValidatedInput
                                                         label="Col (X)"
-                                                        value={dept.column}
-                                                        onChange={(val) => updateDepartment(dept.id, { column: val })}
+                                                        value={bay.column}
+                                                        onChange={(val) => updateBay(bay.id, { column: val })}
                                                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
                                                     />
                                                     <ValidatedInput
                                                         label="Width"
-                                                        value={dept.width}
-                                                        onChange={(val) => updateDepartment(dept.id, { width: val })}
+                                                        value={bay.width}
+                                                        onChange={(val) => updateBay(bay.id, { width: val })}
                                                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
                                                         min={1}
                                                     />
                                                     <ValidatedInput
                                                         label="Depth"
-                                                        value={dept.depth}
-                                                        onChange={(val) => updateDepartment(dept.id, { depth: val })}
+                                                        value={bay.depth}
+                                                        onChange={(val) => updateBay(bay.id, { depth: val })}
                                                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
                                                         min={1}
                                                     />
+                                                </div>
+
+                                                <div>
+                                                    <ValidatedInput
+                                                        label="Shelf Spacing"
+                                                        value={bay.shelfSpacing ?? 0}
+                                                        onChange={(val) => updateBay(bay.id, { shelfSpacing: val })}
+                                                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
+                                                        min={0}
+                                                        placeholder="0"
+                                                    />
+                                                    <span className="text-[9px] text-slate-400 font-medium mt-1 block">Distance between shelves within this bay</span>
                                                 </div>
 
                                                 <div className="space-y-3">
@@ -403,49 +653,111 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                         <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Shelves</span>
                                                         <button
                                                             onClick={() => {
-                                                                const newShelf = { id: `${dept.id}-${String.fromCharCode(65 + dept.shelves.length)}`, name: `Shelf ${String.fromCharCode(65 + dept.shelves.length)}` };
-                                                                updateDepartment(dept.id, { shelves: [...dept.shelves, newShelf] });
+                                                                const newShelf = { id: `${bay.id}-${String.fromCharCode(65 + bay.shelves.length)}`, name: `Shelf ${String.fromCharCode(65 + bay.shelves.length)}`, closedSides: ['back'] };
+                                                                updateBay(bay.id, { shelves: [...bay.shelves, newShelf] });
                                                             }}
                                                             className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase"
                                                         >
                                                             + Add Shelf
                                                         </button>
                                                     </div>
-                                                    {dept.shelves.map((shelf, idx) => (
-                                                        <div key={shelf.id} className="flex gap-2 items-center">
-                                                            <div className="flex-1 flex gap-2">
-                                                                <input
-                                                                    type="text"
-                                                                    value={shelf.name}
-                                                                    onChange={(e) => {
-                                                                        const newShelves = [...dept.shelves];
-                                                                        newShelves[idx] = { ...shelf, name: e.target.value };
-                                                                        updateDepartment(dept.id, { shelves: newShelves });
+                                                    {bay.shelves.map((shelf, idx) => (
+                                                        <div key={shelf.id} className="space-y-2">
+                                                            <div className="flex gap-2 items-center">
+                                                                <div className="flex-1 flex gap-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        value={shelf.name}
+                                                                        onChange={(e) => {
+                                                                            const newShelves = [...bay.shelves];
+                                                                            newShelves[idx] = { ...shelf, name: e.target.value };
+                                                                            updateBay(bay.id, { shelves: newShelves });
+                                                                        }}
+                                                                        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                                                        placeholder="Shelf Name"
+                                                                    />
+                                                                    <ValidatedInput
+                                                                        value={shelf.levelCount || 5}
+                                                                        onChange={(val) => {
+                                                                            const newShelves = [...bay.shelves];
+                                                                            newShelves[idx] = { ...shelf, levelCount: val };
+                                                                            updateBay(bay.id, { shelves: newShelves });
+                                                                        }}
+                                                                        className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none text-center"
+                                                                        label=""
+                                                                        min={1}
+                                                                        placeholder="Rows"
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        updateBay(bay.id, { shelves: bay.shelves.filter(s => s.id !== shelf.id) });
                                                                     }}
-                                                                    className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
-                                                                    placeholder="Shelf Name"
-                                                                />
-                                                                <ValidatedInput
-                                                                    value={shelf.levelCount || 5}
-                                                                    onChange={(val) => {
-                                                                        const newShelves = [...dept.shelves];
-                                                                        newShelves[idx] = { ...shelf, levelCount: val };
-                                                                        updateDepartment(dept.id, { shelves: newShelves });
-                                                                    }}
-                                                                    className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none text-center"
-                                                                    label=""
-                                                                    min={1}
-                                                                    placeholder="Rows"
-                                                                />
+                                                                    className="p-1.5 text-slate-300 hover:text-red-500 transition-colors"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                onClick={() => {
-                                                                    updateDepartment(dept.id, { shelves: dept.shelves.filter(s => s.id !== shelf.id) });
-                                                                }}
-                                                                className="p-1.5 text-slate-300 hover:text-red-500 transition-colors"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
+                                                            <div className="flex gap-2 items-center pl-1">
+                                                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Closed Sides:</span>
+                                                                {(['left', 'right', 'front', 'back'] as const).map((side) => {
+                                                                    // Back side is checked by default (when closedSides is undefined)
+                                                                    // For other sides, checked only if explicitly in closedSides
+                                                                    const isChecked = side === 'back'
+                                                                        ? (shelf.closedSides === undefined || shelf.closedSides.includes('back'))
+                                                                        : (shelf.closedSides?.includes(side) || false);
+                                                                    return (
+                                                                        <label key={side} className="flex items-center gap-1 cursor-pointer">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isChecked}
+                                                                                onChange={(e) => {
+                                                                                    const currentClosedSides = shelf.closedSides || [];
+                                                                                    let newClosedSides: ('left' | 'right' | 'front' | 'back')[];
+                                                                                    
+                                                                                    if (e.target.checked) {
+                                                                                        // Add the side
+                                                                                        if (currentClosedSides.includes(side)) {
+                                                                                            newClosedSides = currentClosedSides;
+                                                                                        } else {
+                                                                                            newClosedSides = [...currentClosedSides, side];
+                                                                                        }
+                                                                                    } else {
+                                                                                        // Remove the side
+                                                                                        newClosedSides = currentClosedSides.filter(s => s !== side);
+                                                                                    }
+                                                                                    
+                                                                                    const newShelves = [...bay.shelves];
+                                                                                    // If back is unchecked and no other sides, set to empty array (all open)
+                                                                                    // If back is checked and it's the only one, set to undefined (default state)
+                                                                                    // Otherwise, store the array
+                                                                                    if (newClosedSides.length === 0) {
+                                                                                        newShelves[idx] = { ...shelf, closedSides: [] };
+                                                                                    } else if (newClosedSides.length === 1 && newClosedSides[0] === 'back') {
+                                                                                        // Only back selected = default state, use undefined
+                                                                                        newShelves[idx] = { ...shelf, closedSides: undefined };
+                                                                                    } else {
+                                                                                        newShelves[idx] = { ...shelf, closedSides: newClosedSides };
+                                                                                    }
+                                                                                    updateBay(bay.id, { shelves: newShelves });
+                                                                                }}
+                                                                                className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                                            />
+                                                                            <span className="text-[9px] font-bold text-slate-600 uppercase">{side}</span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -535,9 +847,10 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Placement Rows</label>
                                                             <div className="flex flex-wrap gap-2 p-3 bg-white border border-slate-200 rounded-2xl shadow-sm">
                                                                 {(() => {
-                                                                    const dept = storeConfig.departments.find(d => d.id === product.departmentId);
-                                                                    const shelf = dept?.shelves.find(s => s.id === product.shelfId);
-                                                                    const maxLevels = shelf?.levelCount || dept?.levelCount || 5;
+                                                                    const bayId = product.bayId || product.departmentId;
+                                                                    const bay = bayId ? findBayById(storeConfig, bayId) : undefined;
+                                                                    const shelf = bay?.shelves.find(s => s.id === product.shelfId);
+                                                                    const maxLevels = shelf?.levelCount || bay?.levelCount || 5;
 
                                                                     return Array.from({ length: maxLevels }).map((_, idx) => {
                                                                         const isSelected = product.levels?.includes(idx);
@@ -567,31 +880,60 @@ const AdminForm: React.FC<AdminFormProps> = ({
 
                                                     <div className="space-y-4">
                                                         <div className="grid grid-cols-2 gap-4">
-                                                            <div>
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Department Assignment</label>
-                                                                <select
-                                                                    value={product.departmentId}
-                                                                    onChange={(e) => {
-                                                                        const dept = storeConfig.departments.find(d => d.id === e.target.value);
-                                                                        updateProduct(product.id, { departmentId: e.target.value, shelfId: dept?.shelves[0]?.id || '' });
-                                                                    }}
-                                                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-800 outline-none shadow-sm focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                                                                >
-                                                                    {storeConfig.departments.map(d => <option key={d.id} value={d.id}>{d.id} – {d.name}</option>)}
-                                                                </select>
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Shelf Assignment</label>
-                                                                <select
-                                                                    value={product.shelfId}
-                                                                    onChange={(e) => updateProduct(product.id, { shelfId: e.target.value })}
-                                                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-800 outline-none shadow-sm focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                                                                >
-                                                                    {storeConfig.departments.find(d => d.id === product.departmentId)?.shelves.map(s => (
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Bay Assignment</label>
+                                                            <select
+                                                                value={product.bayId || product.departmentId || ''}
+                                                                onChange={(e) => {
+                                                                    const bay = findBayById(storeConfig, e.target.value);
+                                                                    const newShelfId = bay?.shelves[0]?.id || '';
+                                                                    updateProduct(product.id, { bayId: e.target.value, shelfId: newShelfId });
+                                                                    // Trigger camera focus on bay and aisle
+                                                                    if (onAisleSelect && bay) {
+                                                                        const aisleId = getAisleIdForBay(storeConfig, e.target.value);
+                                                                        onAisleSelect(aisleId);
+                                                                    }
+                                                                    onDepartmentExpand(e.target.value);
+                                                                    if (onShelfSelect) {
+                                                                        onShelfSelect(newShelfId || null);
+                                                                    }
+                                                                }}
+                                                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-800 outline-none shadow-sm focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                                                            >
+                                                                {allBays.map(b => <option key={b.id} value={b.id}>{b.id} – {b.name}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Shelf Assignment</label>
+                                                            <select
+                                                                value={product.shelfId}
+                                                                onChange={(e) => {
+                                                                    updateProduct(product.id, { shelfId: e.target.value });
+                                                                    // Trigger camera focus on shelf
+                                                                    if (onShelfSelect) {
+                                                                        onShelfSelect(e.target.value || null);
+                                                                    }
+                                                                    // Ensure bay is expanded when selecting shelf
+                                                                    const bayId = product.bayId || product.departmentId;
+                                                                    if (bayId && expandedDepartmentId !== bayId) {
+                                                                        onDepartmentExpand(bayId);
+                                                                        if (onAisleSelect) {
+                                                                            const aisleId = getAisleIdForBay(storeConfig, bayId);
+                                                                            onAisleSelect(aisleId);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-800 outline-none shadow-sm focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                                                            >
+                                                                {(() => {
+                                                                    const bayId = product.bayId || product.departmentId;
+                                                                    const bay = bayId ? findBayById(storeConfig, bayId) : undefined;
+                                                                    return bay?.shelves.map(s => (
                                                                         <option key={s.id} value={s.id}>{s.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
+                                                                    )) || [];
+                                                                })()}
+                                                            </select>
+                                                        </div>
                                                         </div>
                                                         <div>
                                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Product Media (URL)</label>

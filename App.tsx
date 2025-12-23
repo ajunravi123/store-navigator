@@ -6,6 +6,7 @@ import Store3D from './components/Store3D';
 import Settings from './components/Settings';
 import AIConsultant from './components/AIConsultant';
 import { findShortestPath } from './services/pathfinder';
+import { findBayById, getAllFloors, migrateStoreConfig, getProductLocation, getAisleColor } from './utils/storeHelpers';
 import { Search, Navigation2, X, Info, Target, Layers, DoorOpen, Navigation, Settings as SettingsIcon, LayoutGrid, Bot } from 'lucide-react';
 
 type AppView = 'explorer' | 'settings';
@@ -33,7 +34,9 @@ const App: React.FC = () => {
         if (storeRes.ok && prodRes.ok) {
           const storeData = await storeRes.json();
           const prodData = await prodRes.json();
-          setStoreConfig(storeData);
+          // Migrate old structure to new structure if needed
+          const migratedStore = migrateStoreConfig(storeData);
+          setStoreConfig(migratedStore);
           setProducts(prodData);
         } else {
           setStoreConfig(DEFAULT_STORE_CONFIG);
@@ -90,47 +93,125 @@ const App: React.FC = () => {
     );
   }, [products, searchQuery, aiHighlightedIds]);
 
-  const targetDepartment = useMemo(() => {
+  const targetBay = useMemo(() => {
     if (!storeConfig || !activeProduct) return null;
-    return storeConfig.departments.find(d => d.id === activeProduct.departmentId);
+    const bayId = activeProduct.bayId || activeProduct.departmentId;
+    return bayId ? findBayById(storeConfig, bayId) : null;
+  }, [storeConfig, activeProduct]);
+
+  const productLocation = useMemo(() => {
+    if (!storeConfig || !activeProduct) return null;
+    return getProductLocation(storeConfig, activeProduct);
   }, [storeConfig, activeProduct]);
 
   const navigationPath = useMemo(() => {
-    if (!storeConfig || !activeProduct || !targetDepartment) return [];
+    if (!storeConfig || !activeProduct || !targetBay) return [];
 
-    const shelfIndex = targetDepartment.shelves.findIndex(s => s.id === activeProduct.shelfId);
+    const shelfIndex = targetBay.shelves.findIndex(s => s.id === activeProduct.shelfId);
     const validShelfIndex = shelfIndex === -1 ? 0 : shelfIndex;
-    const isBackShelf = validShelfIndex % 2 !== 0; // Odd indices are "Back" shelves
-    const numPairs = Math.max(1, Math.ceil(targetDepartment.shelves.length / 2));
-    const pairWidth = targetDepartment.width / numPairs;
-    const pairIndex = Math.floor(validShelfIndex / 2);
+    const numShelves = targetBay.shelves.length;
+    const shelfSpacing = targetBay.shelfSpacing ?? 0;
+    const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
+    const availableWidth = targetBay.width - totalSpacing;
+    const unitWidth = numShelves > 0 ? availableWidth / numShelves : targetBay.width;
 
-    // X: Center of the specific shelf pair
-    const targetX = targetDepartment.column + (pairIndex * pairWidth) + (pairWidth / 2);
+    // X: Center of the specific shelf
+    const targetX = targetBay.column + (unitWidth / 2) + (validShelfIndex * (unitWidth + shelfSpacing));
 
-    // Z: If front (Even), go to "South" aisle (+Depth boundary). If back (Odd), go to "North" aisle (Row boundary).
-    // User requested "just touch", using very small offset (0.2) to be safe but visually touching.
-    let targetZ = isBackShelf
-      ? targetDepartment.row - 0.2
-      : targetDepartment.row + targetDepartment.depth + 0.2;
+    // Z: Path should be positioned accurately on the open side of the shelf
+    // Shelf is centered at bay.row + bay.depth / 2
+    // Shelf depth is bay.depth - 0.5
+    // Front face is at: bay.row + bay.depth / 2 + (bay.depth - 0.5) / 2 = bay.row + bay.depth - 0.25
+    // Back face is at: bay.row + bay.depth / 2 - (bay.depth - 0.5) / 2 = bay.row + 0.25
+    
+    const targetShelf = targetBay.shelves[validShelfIndex];
+    const closedSides = targetShelf?.closedSides ?? [];
+    
+    // Determine which sides are closed/open
+    const isFrontClosed = closedSides.includes('front');
+    const isBackClosed = closedSides === undefined || closedSides.length === 0 || closedSides.includes('back');
+    const isLeftClosed = closedSides.includes('left');
+    const isRightClosed = closedSides.includes('right');
+    
+    // Calculate exact face positions
+    const shelfCenterZ = targetBay.row + targetBay.depth / 2;
+    const shelfDepth = targetBay.depth - 0.5;
+    const frontFaceZ = shelfCenterZ + shelfDepth / 2; // bay.row + bay.depth - 0.25
+    const backFaceZ = shelfCenterZ - shelfDepth / 2;  // bay.row + 0.25
+    
+    // Calculate shelf X boundaries (exact center of shelf section)
+    const shelfLeftX = targetX - unitWidth / 2;
+    const shelfRightX = targetX + unitWidth / 2;
+    const shelfCenterX = targetX; // Exact center X of the shelf section
+    
+    // Position path endpoint at the center of the open side with proper spacing
+    // Use a safe distance (0.8 units = ~80cm) to ensure user doesn't overlap with shelf blocks
+    const safeDistance = 0.8; // Safe walking distance from shelf face
+    
+    let targetZ: number;
+    let targetXFinal: number = shelfCenterX; // Always center X of shelf section
+    
+    if (isFrontClosed && !isBackClosed) {
+      // Front closed, back open - endpoint at center of back face, safely away
+      targetZ = backFaceZ - safeDistance; // Safe distance behind back face, at center
+      targetXFinal = shelfCenterX; // Exact center X of shelf section
+    } else if (isBackClosed && !isFrontClosed) {
+      // Back closed, front open - endpoint at center of front face, safely away
+      targetZ = frontFaceZ + safeDistance; // Safe distance in front of front face (in aisle), at center
+      targetXFinal = shelfCenterX; // Exact center X of shelf section
+    } else if (isFrontClosed && isBackClosed) {
+      // Both front and back are closed - check left/right sides
+      if (!isRightClosed) {
+        // Right side is open - endpoint at center of right face, safely away
+        targetXFinal = shelfRightX + safeDistance; // Safe distance to the right, at center Z
+        targetZ = shelfCenterZ; // Exact center Z of shelf (middle of the side)
+      } else if (!isLeftClosed) {
+        // Left side is open - endpoint at center of left face, safely away
+        targetXFinal = shelfLeftX - safeDistance; // Safe distance to the left, at center Z
+        targetZ = shelfCenterZ; // Exact center Z of shelf (middle of the side)
+      } else {
+        // All sides closed - fallback to front face center with safe distance
+        targetZ = frontFaceZ + safeDistance;
+        targetXFinal = shelfCenterX; // Exact center X
+      }
+    } else {
+      // Both open - endpoint at center of front face, safely away (preferred)
+      targetZ = frontFaceZ + safeDistance; // Safe distance in front of front face (in aisle)
+      targetXFinal = shelfCenterX; // Exact center X of shelf section
+    }
 
     // Boundary checks to keep path somewhat valid within grid
     targetZ = Math.max(0, Math.min(targetZ, storeConfig.gridSize.depth - 1));
+    targetXFinal = Math.max(0, Math.min(targetXFinal, storeConfig.gridSize.width - 1));
 
     const target: PathNode = {
-      x: targetX,
+      x: targetXFinal,
       z: targetZ,
-      floor: targetDepartment.floor
+      floor: targetBay.floor
     };
 
-    return findShortestPath(storeConfig, storeConfig.entrance, target);
-  }, [storeConfig, activeProduct, targetDepartment]);
+    const path = findShortestPath(storeConfig, storeConfig.entrance, target);
+    
+    // Debug logging
+    if (activeProduct.name === 'Frozen Pepperoni Pizza') {
+      console.log('Path calculation for Frozen Pepperoni Pizza:');
+      console.log('Target endpoint:', target);
+      console.log('Closed sides:', closedSides);
+      console.log('Shelf bounds - Left:', shelfLeftX, 'Right:', shelfRightX);
+      console.log('Front face Z:', frontFaceZ, 'Back face Z:', backFaceZ, 'Center Z:', shelfCenterZ);
+      console.log('Path length:', path.length);
+      console.log('Path points:', path.slice(0, 5), '...', path.slice(-5));
+    }
+
+    return path;
+  }, [storeConfig, activeProduct, targetBay]);
 
   const startNavigation = (product: Product) => {
-    const dept = storeConfig?.departments.find(d => d.id === product.departmentId);
+    const bayId = product.bayId || product.departmentId;
+    const bay = bayId ? findBayById(storeConfig, bayId) : undefined;
     setActiveProduct(product);
     setIsNavigating(true);
-    if (dept) setCurrentMapFloor(dept.floor);
+    if (bay) setCurrentMapFloor(bay.floor);
     setIsAISidebarOpen(false);
   };
 
@@ -215,7 +296,8 @@ const App: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
             {filteredProducts.map(product => {
-              const dept = storeConfig.departments.find(d => d.id === product.departmentId);
+              const bayId = product.bayId || product.departmentId;
+              const bay = bayId ? findBayById(storeConfig, bayId) : undefined;
               const isAIMatch = aiHighlightedIds.includes(product.id);
 
               return (
@@ -235,7 +317,7 @@ const App: React.FC = () => {
                     <h3 className="text-lg font-black text-slate-900 leading-tight mb-4 group-hover:text-blue-600 transition-colors">{product.name}</h3>
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-slate-500 border border-slate-100 w-fit">
                       <Layers size={14} className="text-indigo-400" />
-                      <span className="text-xs font-bold uppercase">Floor {dept?.floor ?? 0}</span>
+                      <span className="text-xs font-bold uppercase">Floor {bay?.floor ?? 0}</span>
                     </div>
                   </div>
                   <button onClick={() => startNavigation(product)} className={`w-full py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-3 transition-all shadow-xl active:scale-95 ${isAIMatch ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-900 text-white hover:bg-blue-600'}`}>
@@ -284,7 +366,7 @@ const App: React.FC = () => {
                 <img src={activeProduct.image} className="w-12 h-12 object-cover rounded-2xl shadow-md border border-slate-100" />
                 <div>
                   <h4 className="text-slate-900 text-lg font-black leading-none mb-1.5">{activeProduct.name}</h4>
-                  <p className="text-blue-600 text-[10px] font-black uppercase tracking-[0.2em]">Floor {targetDepartment?.floor} • Pathfinding</p>
+                  <p className="text-blue-600 text-[10px] font-black uppercase tracking-[0.2em]">Floor {targetBay?.floor} • Pathfinding</p>
                 </div>
               </div>
               <button onClick={closeNavigation} className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 hover:text-slate-600 transition-all">
@@ -310,13 +392,25 @@ const App: React.FC = () => {
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Floor {storeConfig.entrance.floor}</p>
                       </div>
                     </div>
-                    <div className={`flex gap-5 relative transition-all duration-500 ${currentMapFloor === targetDepartment?.floor ? 'opacity-100' : 'opacity-25'}`}>
+                    <div className={`flex gap-5 relative transition-all duration-500 ${currentMapFloor === targetBay?.floor ? 'opacity-100' : 'opacity-25'}`}>
                       <div className="w-11 h-11 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-xl z-10 shrink-0 border-4 border-white">
                         <Target size={20} />
                       </div>
                       <div className="pt-1">
                         <h5 className="font-black text-slate-900 text-[15px] mb-1 leading-none">{activeProduct.name}</h5>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Department {activeProduct.departmentId}</p>
+                        {productLocation ? (
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                              {productLocation.zone.name} → <span style={{ color: getAisleColor(productLocation.aisle.id) }}>{productLocation.aisle.name}</span> → {productLocation.bay.name}
+                              {productLocation.shelf && ` → ${productLocation.shelf.name}`}
+                            </p>
+                            <p className="text-[9px] text-slate-300 font-semibold uppercase tracking-wider">
+                              Floor {targetBay?.floor}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bay {activeProduct.bayId || activeProduct.departmentId}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -339,7 +433,7 @@ const App: React.FC = () => {
                   disableFocus={true}
                 />
                 <div className="absolute top-6 right-6 flex flex-col gap-2">
-                  {[...new Set(storeConfig.departments.map(d => d.floor))].sort().map(f => (
+                  {getAllFloors(storeConfig).map(f => (
                     <button
                       key={f}
                       onClick={() => setCurrentMapFloor(f)}

@@ -3,7 +3,8 @@ import React, { useMemo, useEffect, useState, useRef, Suspense } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, PerspectiveCamera, Environment, Grid, Line, Float, ContactShadows, useProgress, Html, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
-import { StoreConfig, Product, PathNode, Department, Shelf } from '../types';
+import { StoreConfig, Product, PathNode, Bay, Shelf } from '../types';
+import { getAllBays, findBayById, getAllFloors, getAisleIdForBay, getAisleColor, getAisleBounds, getBaysForAisle } from '../utils/storeHelpers';
 import { Loader2 } from 'lucide-react';
 
 interface Store3DProps {
@@ -15,6 +16,8 @@ interface Store3DProps {
   showAllProducts?: boolean;
   showLabels?: boolean;
   targetDepartmentId?: string | null;
+  targetAisleId?: string | null;
+  targetShelfId?: string | null;
   disableFocus?: boolean;
 }
 
@@ -109,39 +112,56 @@ const DetailedShelfUnit: React.FC<{
   depth: number;
   frontConfig?: { color: string; isTarget: boolean; targetLevels?: number[]; name: string; levelCount: number };
   backConfig?: { color: string; isTarget: boolean; targetLevels?: number[]; name: string; levelCount: number };
-}> = ({ width, height, depth, frontConfig, backConfig }) => {
-  const shelfCount = Math.max(frontConfig?.levelCount || 5, backConfig?.levelCount || 5);
+  closedSides?: ('left' | 'right' | 'front' | 'back')[];
+}> = ({ width, height, depth, frontConfig, backConfig, closedSides }) => {
+  const shelfCount = frontConfig?.levelCount || 5;
   const shelfThickness = 0.05;
   const shelfSpacing = (height - 0.2) / shelfCount;
 
+  // By default, back side is closed. Other sides are open unless specified in closedSides
+  // If closedSides is undefined, back is closed by default (default state)
+  // If closedSides is an empty array [], it means user explicitly unchecked back (all open)
+  // If closedSides includes a side, that side has a panel
+  const showLeftSide = closedSides?.includes('left') || false;
+  const showRightSide = closedSides?.includes('right') || false;
+  const showFrontSide = closedSides?.includes('front') || false;
+  // Back is closed by default (when undefined) or when explicitly included
+  // If closedSides is an empty array [], it means user explicitly set all sides open
+  const showBackSide = closedSides === undefined || (closedSides.length > 0 && closedSides.includes('back'));
+
   return (
     <group>
-      {/* Vertical Uprights (T-Posts) - Open Sides */}
-      <group>
-        <mesh position={[-width / 2 + 0.04, 0, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.08, height, 0.15]} />
+      {/* Left Side */}
+      {showLeftSide && (
+        <mesh position={[-width / 2, 0, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.08, height, depth]} />
           <meshStandardMaterial color="#334155" metalness={0.6} roughness={0.4} />
         </mesh>
-        <mesh position={[-width / 2 + 0.04, -height / 2 + 0.1, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.08, 0.2, depth - 0.1]} />
-          <meshStandardMaterial color="#334155" metalness={0.6} roughness={0.4} />
-        </mesh>
+      )}
 
-        <mesh position={[width / 2 - 0.04, 0, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.08, height, 0.15]} />
+      {/* Right Side */}
+      {showRightSide && (
+        <mesh position={[width / 2, 0, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.08, height, depth]} />
           <meshStandardMaterial color="#334155" metalness={0.6} roughness={0.4} />
         </mesh>
-        <mesh position={[width / 2 - 0.04, -height / 2 + 0.1, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.08, 0.2, depth - 0.1]} />
-          <meshStandardMaterial color="#334155" metalness={0.6} roughness={0.4} />
-        </mesh>
-      </group>
+      )}
 
-      {/* Central Divider (Gondola Backing) */}
-      <mesh position={[0, 0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[width - 0.1, height, 0.05]} />
-        <meshStandardMaterial color="#cbd5e1" />
-      </mesh>
+      {/* Front Side */}
+      {showFrontSide && (
+        <mesh position={[0, 0, depth / 2]} castShadow receiveShadow>
+          <boxGeometry args={[width, height, 0.08]} />
+          <meshStandardMaterial color="#334155" metalness={0.6} roughness={0.4} />
+        </mesh>
+      )}
+
+      {/* Back Side */}
+      {showBackSide && (
+        <mesh position={[0, 0, -depth / 2]} castShadow receiveShadow>
+          <boxGeometry args={[width, height, 0.08]} />
+          <meshStandardMaterial color="#334155" metalness={0.6} roughness={0.4} />
+        </mesh>
+      )}
 
       {/* Horizontal Shelves & Products */}
       {Array.from({ length: shelfCount }).map((_, i) => {
@@ -149,8 +169,6 @@ const DetailedShelfUnit: React.FC<{
 
         const showFront = frontConfig && i < frontConfig.levelCount;
         const frontHighlight = showFront && frontConfig.targetLevels?.includes(i);
-        const showBack = backConfig && i < backConfig.levelCount;
-        const backHighlight = showBack && backConfig.targetLevels?.includes(i);
 
         return (
           <group key={i} position={[0, y, 0]}>
@@ -164,22 +182,10 @@ const DetailedShelfUnit: React.FC<{
             {showFront && i < shelfCount - 1 && (
               <group>
                 <AnimatedProductRow
-                  position={[0, 0.2, depth / 4]}
-                  args={[width - 0.2, 0.35, depth / 2 - 0.2]}
+                  position={[0, 0.2, 0]}
+                  args={[width - 0.2, 0.35, depth - 0.3]}
                   color={frontConfig.color}
                   isHighlight={!!frontHighlight}
-                />
-              </group>
-            )}
-
-            {/* Back Products */}
-            {showBack && i < shelfCount - 1 && (
-              <group>
-                <AnimatedProductRow
-                  position={[0, 0.2, -depth / 4]}
-                  args={[width - 0.2, 0.35, depth / 2 - 0.2]}
-                  color={backConfig.color}
-                  isHighlight={!!backHighlight}
                 />
               </group>
             )}
@@ -188,7 +194,7 @@ const DetailedShelfUnit: React.FC<{
       })}
 
       {/* Highlight Frame */}
-      {(frontConfig?.isTarget || backConfig?.isTarget) && (
+      {frontConfig?.isTarget && (
         <group>
           <mesh position={[0, 0, 0]}>
             <boxGeometry args={[width + 0.2, height + 0.2, depth + 0.2]} />
@@ -204,78 +210,104 @@ const DetailedShelfUnit: React.FC<{
   );
 };
 
-const DepartmentComponent: React.FC<{ department: Department; isTarget: boolean; targetProduct?: Product | null; disableFocus?: boolean }> = ({ department, isTarget, targetProduct, disableFocus }) => {
-  const shelfPairs = useMemo(() => {
-    const pairs = [];
-    for (let i = 0; i < department.shelves.length; i += 2) {
-      pairs.push([department.shelves[i], department.shelves[i + 1]]);
-    }
-    return pairs;
-  }, [department.shelves]);
+// Aisle Highlight Component - renders a floor highlight for the entire aisle
+const AisleHighlight: React.FC<{ aisleId: string; config: StoreConfig; currentFloor: number }> = ({ aisleId, config, currentFloor }) => {
+  const bounds = getAisleBounds(config, aisleId);
+  if (!bounds || bounds.floor !== currentFloor) return null;
 
-  const unitWidth = department.width / shelfPairs.length;
+  const aisleColor = getAisleColor(aisleId);
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+  const width = bounds.maxX - bounds.minX;
+  const depth = bounds.maxZ - bounds.minZ;
+
+  return (
+    <group position={[centerX, -0.65, centerZ]}>
+      {/* Semi-transparent floor highlight */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <planeGeometry args={[width, depth]} />
+        <meshStandardMaterial 
+          color={aisleColor} 
+          transparent 
+          opacity={0.15}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      
+      {/* Thick boundary outline around entire aisle */}
+      <Line
+        points={[
+          [-width / 2, 0.02, -depth / 2],
+          [width / 2, 0.02, -depth / 2],
+          [width / 2, 0.02, depth / 2],
+          [-width / 2, 0.02, depth / 2],
+          [-width / 2, 0.02, -depth / 2]
+        ]}
+        color={aisleColor}
+        lineWidth={12}
+      />
+    </group>
+  );
+};
+
+const BayComponent: React.FC<{ bay: Bay; aisleId: string | null; isTarget: boolean; targetProduct?: Product | null; disableFocus?: boolean }> = ({ bay, aisleId, isTarget, targetProduct, disableFocus }) => {
+  const shelfSpacing = bay.shelfSpacing ?? 0; // Default spacing is 0
+  const numShelves = bay.shelves.length;
+  const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1); // Total spacing between all shelves
+  const availableWidth = bay.width - totalSpacing; // Width available for shelves after spacing
+  const unitWidth = numShelves > 0 ? availableWidth / numShelves : bay.width;
   const UNIT_HEIGHT = 2.2;
   const Y_SHIFT = 0.35;
 
+  // Use aisle color for all shelves in this bay
+  const aisleColor = aisleId ? getAisleColor(aisleId) : '#64748b';
+
+  const getShelfConfig = (shelf: Shelf) => {
+    const isTargetShelf = isTarget && targetProduct?.shelfId === shelf.id;
+    // Use aisle color instead of bay hash color - all shelves in same aisle have same color
+    return {
+      color: aisleColor,
+      isTarget: isTargetShelf,
+      targetLevels: isTargetShelf ? targetProduct?.levels : undefined,
+      name: shelf.name,
+      levelCount: shelf.levelCount || 5
+    };
+  };
+
   return (
-    <group position={[department.column + department.width / 2, 0.75, department.row + department.depth / 2]}>
+    <group position={[bay.column + bay.width / 2, 0.75, bay.row + bay.depth / 2]}>
       <mesh castShadow receiveShadow position={[0, -0.7, 0]}>
-        <boxGeometry args={[department.width, 0.1, department.depth]} />
+        <boxGeometry args={[bay.width, 0.1, bay.depth]} />
         <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.2} />
       </mesh>
-      {shelfPairs.map((pair, idx) => {
-        const frontShelf = pair[0];
-        const backShelf = pair[1]; // may be undefined
-        const xPos = -department.width / 2 + unitWidth / 2 + (idx * unitWidth);
-
-        const getShelfConfig = (shelf: Shelf | undefined) => {
-          if (!shelf) return undefined;
-          const isTargetShelf = isTarget && targetProduct?.shelfId === shelf.id;
-          const deptHash = department.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-          const themeColor = DEPARTMENT_COLORS[deptHash % DEPARTMENT_COLORS.length];
-          return {
-            color: themeColor,
-            isTarget: isTargetShelf,
-            targetLevels: isTargetShelf ? targetProduct?.levels : undefined,
-            name: shelf.name,
-            levelCount: shelf.levelCount || 5
-          };
-        };
-
-        const frontConfig = getShelfConfig(frontShelf);
-        const backConfig = getShelfConfig(backShelf);
+      {bay.shelves.map((shelf, idx) => {
+        // Calculate position: start from left edge, add half unit width, then add spacing and unit width for each previous shelf
+        const xPos = -bay.width / 2 + unitWidth / 2 + (idx * (unitWidth + shelfSpacing));
+        const frontConfig = getShelfConfig(shelf);
 
         return (
-          <group key={frontShelf.id} position={[xPos, Y_SHIFT, 0]}>
+          <group key={shelf.id} position={[xPos, Y_SHIFT, 0]}>
             <DetailedShelfUnit
               width={unitWidth - 0.4}
               height={UNIT_HEIGHT}
-              depth={department.depth - 0.5}
+              depth={bay.depth - 0.5}
               frontConfig={frontConfig}
-              backConfig={backConfig}
+              backConfig={undefined}
+              closedSides={shelf.closedSides}
             />
 
             {/* Labels - Front */}
             {frontConfig && (
-              <group position={[0, UNIT_HEIGHT / 2 + 0.3, department.depth / 2 - 0.25]}>
+              <group position={[0, UNIT_HEIGHT / 2 + 0.3, bay.depth / 2 - 0.25]}>
                 <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
                   {frontConfig.name}
-                </Text>
-              </group>
-            )}
-
-            {/* Labels - Back */}
-            {backConfig && (
-              <group position={[0, UNIT_HEIGHT / 2 + 0.3, -department.depth / 2 + 0.25]}>
-                <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000" rotation={[0, Math.PI, 0]}>
-                  {backConfig.name}
                 </Text>
               </group>
             )}
           </group>
         );
       })}
-      {/* Department Name Label - Raised higher */}
+      {/* Bay Name Label - Raised higher */}
       <Billboard position={[0, 2.8, 0]}>
         <Text
           fontSize={0.6}
@@ -285,7 +317,7 @@ const DepartmentComponent: React.FC<{ department: Department; isTarget: boolean;
           outlineWidth={0.08}
           outlineColor="#ffffff"
         >
-          {department.name.toUpperCase()}
+          {bay.name.toUpperCase()}
         </Text>
       </Billboard>
     </group>
@@ -464,27 +496,31 @@ const WalkingAvatar: React.FC<{ points: PathNode[]; currentFloor: number }> = ({
   );
 };
 
-const ProductMarker: React.FC<{ product: Product; department: Department; type?: 'default' | 'ai'; showLabel?: boolean }> = ({ product, department, type = 'default', showLabel = false }) => {
+const ProductMarker: React.FC<{ product: Product; bay: Bay; type?: 'default' | 'ai'; showLabel?: boolean }> = ({ product, bay, type = 'default', showLabel = false }) => {
   const markerColor = type === 'ai' ? '#6366f1' : '#facc15';
   const pos = useMemo(() => {
-    const shelfIndex = department.shelves.findIndex(s => s.id === product.shelfId);
+    const shelfIndex = bay.shelves.findIndex(s => s.id === product.shelfId);
     const validShelfIndex = shelfIndex === -1 ? 0 : shelfIndex;
 
-    const pairIndex = Math.floor(validShelfIndex / 2);
-    const isBack = validShelfIndex % 2 === 1;
+    const numShelves = bay.shelves.length;
+    const shelfSpacing = bay.shelfSpacing ?? 0;
+    const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
+    const availableWidth = bay.width - totalSpacing;
+    const unitWidth = numShelves > 0 ? availableWidth / numShelves : bay.width;
 
-    const numPairs = Math.ceil(department.shelves.length / 2);
-    const unitWidth = department.width / numPairs;
-
-    const offsetX = department.column + (pairIndex * unitWidth) + (unitWidth / 2);
-    // Front is +Z, Back is -Z relative to unit center.
-    // Unit center Z is department.row + department.depth/2
-    const offsetZ = isBack
-      ? (department.row + department.depth / 2) - ((department.depth - 0.5) / 4)
-      : (department.row + department.depth / 2) + ((department.depth - 0.5) / 4);
+    // X: Center of the specific shelf (matching BayComponent calculation)
+    // Bay group is centered at: bay.column + bay.width / 2
+    // Shelf position relative to center: -bay.width / 2 + unitWidth / 2 + (idx * (unitWidth + shelfSpacing))
+    // Absolute X = bay.column + unitWidth / 2 + (idx * (unitWidth + shelfSpacing))
+    const offsetX = bay.column + (unitWidth / 2) + (validShelfIndex * (unitWidth + shelfSpacing));
+    // Z: Products are displayed on the front side of each shelf
+    // Bay group is centered at: bay.row + bay.depth / 2
+    // Products are at: bay.depth / 2 - 0.25 (relative) + (bay.depth - 0.5) / 4
+    // Absolute Z = bay.row + bay.depth / 2 + ((bay.depth - 0.5) / 4)
+    const offsetZ = bay.row + bay.depth / 2 + ((bay.depth - 0.5) / 4);
 
     return { x: offsetX, z: offsetZ };
-  }, [department, product]);
+  }, [bay, product]);
 
   return (
     <group position={[pos.x, 0.5, pos.z]}>
@@ -561,33 +597,72 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
   return null;
 };
 
-const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, currentFloor, allProducts = [], showAllProducts = false, showLabels = false, targetDepartmentId, disableFocus }) => {
+const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, currentFloor, allProducts = [], showAllProducts = false, showLabels = false, targetDepartmentId, targetAisleId, targetShelfId, disableFocus }) => {
   const centerX = config.gridSize.width / 2;
   const centerZ = config.gridSize.depth / 2;
 
-  const selectedDepartment = useMemo(() => config.departments.find(d => d.id === targetDepartmentId), [config.departments, targetDepartmentId]);
-  const targetDepartment = useMemo(() => config.departments.find(d => d.id === targetProduct?.departmentId), [config.departments, targetProduct]);
+  const selectedBay = useMemo(() => targetDepartmentId ? findBayById(config, targetDepartmentId) : undefined, [config, targetDepartmentId]);
+  const targetBay = useMemo(() => {
+    if (!targetProduct) return undefined;
+    // Support both new (bayId) and legacy (departmentId) product references
+    return findBayById(config, targetProduct.bayId || targetProduct.departmentId || '');
+  }, [config, targetProduct]);
+
+  const shelfBay = useMemo(() => {
+    if (!targetShelfId) return null;
+    // Find the bay that contains this shelf
+    const allBaysList = getAllBays(config);
+    return allBaysList.find(bay => bay.shelves.some(s => s.id === targetShelfId)) || null;
+  }, [config, targetShelfId]);
 
   const cameraTargetPoint = useMemo(() => {
     let point: THREE.Vector3 | null = null;
-    if (targetProduct && targetDepartment) {
-      const idx = targetDepartment.shelves.findIndex(s => s.id === targetProduct.shelfId);
+    
+    // Priority: Shelf > Bay > Aisle > Product
+    if (targetShelfId && (selectedBay || shelfBay)) {
+      // Focus on specific shelf within bay
+      const bay = selectedBay || shelfBay;
+      if (bay) {
+        const shelfIdx = bay.shelves.findIndex(s => s.id === targetShelfId);
+        const validIdx = shelfIdx === -1 ? 0 : shelfIdx;
+
+        const numShelves = bay.shelves.length;
+        const shelfSpacing = bay.shelfSpacing ?? 0;
+        const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
+        const availableWidth = bay.width - totalSpacing;
+        const unitWidth = numShelves > 0 ? availableWidth / numShelves : bay.width;
+
+        const x = bay.column + (unitWidth / 2) + (validIdx * (unitWidth + shelfSpacing));
+        const z = bay.row + bay.depth / 2;
+        point = new THREE.Vector3(x, 0, z);
+      }
+    } else if (selectedBay) {
+      // Focus on bay center
+      point = new THREE.Vector3(selectedBay.column + selectedBay.width / 2, 0, selectedBay.row + selectedBay.depth / 2);
+    } else if (targetAisleId) {
+      // Focus on aisle center
+      const bounds = getAisleBounds(config, targetAisleId);
+      if (bounds && bounds.floor === currentFloor) {
+        const centerX = (bounds.minX + bounds.maxX) / 2;
+        const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+        point = new THREE.Vector3(centerX, 0, centerZ);
+      }
+    } else if (targetProduct && targetBay) {
+      // Focus on product shelf
+      const idx = targetBay.shelves.findIndex(s => s.id === targetProduct.shelfId);
       const validIdx = idx === -1 ? 0 : idx;
 
-      const pairIndex = Math.floor(validIdx / 2);
-      const isBack = validIdx % 2 === 1;
-      const numPairs = Math.ceil(targetDepartment.shelves.length / 2);
-      const unitWidth = targetDepartment.width / numPairs;
+      const numShelves = targetBay.shelves.length;
+      const shelfSpacing = targetBay.shelfSpacing ?? 0;
+      const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
+      const availableWidth = targetBay.width - totalSpacing;
+      const unitWidth = numShelves > 0 ? availableWidth / numShelves : targetBay.width;
 
-      const x = targetDepartment.column + (pairIndex * unitWidth) + (unitWidth / 2);
-      const z = isBack
-        ? (targetDepartment.row + targetDepartment.depth / 2) - ((targetDepartment.depth - 0.5) / 4)
-        : (targetDepartment.row + targetDepartment.depth / 2) + ((targetDepartment.depth - 0.5) / 4);
+      const x = targetBay.column + (unitWidth / 2) + (validIdx * (unitWidth + shelfSpacing));
+      const productZ = targetBay.row + targetBay.depth / 2 + ((targetBay.depth - 0.5) / 4);
+      const z = productZ + 0.3;
 
       point = new THREE.Vector3(x, 0, z);
-
-    } else if (selectedDepartment) {
-      point = new THREE.Vector3(selectedDepartment.column + selectedDepartment.width / 2, 0, selectedDepartment.row + selectedDepartment.depth / 2);
     }
 
     if (point) {
@@ -595,15 +670,16 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
       return new THREE.Vector3(point.x - centerX, 0, point.z - centerZ);
     }
     return null;
-  }, [targetProduct, targetDepartment, selectedDepartment, centerX, centerZ]);
+  }, [targetProduct, targetBay, selectedBay, targetAisleId, targetShelfId, shelfBay, config, currentFloor, centerX, centerZ]);
 
   const floorProducts = useMemo(() => {
     if (!showAllProducts) return [];
     return allProducts.filter(p => {
-      const d = config.departments.find(sh => sh.id === p.departmentId);
-      return d && d.floor === currentFloor && p.id !== targetProduct?.id;
+      const bayId = p.bayId || p.departmentId;
+      const bay = bayId ? findBayById(config, bayId) : undefined;
+      return bay && bay.floor === currentFloor && p.id !== targetProduct?.id;
     });
-  }, [allProducts, showAllProducts, config.departments, currentFloor, targetProduct]);
+  }, [allProducts, showAllProducts, config, currentFloor, targetProduct]);
 
   return (
     <>
@@ -661,14 +737,34 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
             <Elevator key={`elevator-${idx}`} position={[e.x, 0, e.z]} />
           ))}
 
-          {config.departments.filter(d => d.floor === currentFloor).map(d => <DepartmentComponent key={d.id} department={d} isTarget={targetProduct?.departmentId === d.id || targetDepartmentId === d.id} targetProduct={targetProduct} disableFocus={disableFocus} />)}
+          {/* Render aisle highlights first (behind bays) - shows the entire aisle area */}
+          {(() => {
+            const aisleIds = new Set<string>();
+            getAllBays(config).filter(b => b.floor === currentFloor).forEach(b => {
+              const aid = getAisleIdForBay(config, b.id);
+              if (aid) aisleIds.add(aid);
+            });
+            return Array.from(aisleIds).map(aisleId => (
+              <AisleHighlight key={aisleId} aisleId={aisleId} config={config} currentFloor={currentFloor} />
+            ));
+          })()}
+
+          {/* Render bays */}
+          {getAllBays(config).filter(b => b.floor === currentFloor).map(b => {
+            const aisleId = getAisleIdForBay(config, b.id);
+            return <BayComponent key={b.id} bay={b} aisleId={aisleId} isTarget={(targetProduct?.bayId || targetProduct?.departmentId) === b.id || targetDepartmentId === b.id} targetProduct={targetProduct} disableFocus={disableFocus} />;
+          })}
 
           <PathLine points={path} currentFloor={currentFloor} />
           <WalkingAvatar points={path} currentFloor={currentFloor} />
 
-          {floorProducts.map(p => <ProductMarker key={p.id} product={p} department={config.departments.find(d => d.id === p.departmentId)!} type="ai" showLabel={showLabels} />)}
+          {floorProducts.map(p => {
+            const bayId = p.bayId || p.departmentId;
+            const bay = bayId ? findBayById(config, bayId) : undefined;
+            return bay ? <ProductMarker key={p.id} product={p} bay={bay} type="ai" showLabel={showLabels} /> : null;
+          })}
 
-          {targetDepartment && targetProduct && targetDepartment.floor === currentFloor && cameraTargetPoint && (
+          {targetBay && targetProduct && targetBay.floor === currentFloor && cameraTargetPoint && (
             <group position={[cameraTargetPoint.x + centerX, 0, cameraTargetPoint.z + centerZ]}>
               <mesh position={[0, 2, 0]}>
                 <cylinderGeometry args={[0.05, 0.05, 4, 8]} />

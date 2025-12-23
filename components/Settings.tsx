@@ -4,6 +4,7 @@ import { DEFAULT_STORE_CONFIG, DEFAULT_PRODUCTS } from '../constants';
 import { Database, Save, RotateCcw, AlertCircle, CheckCircle2, Eye, Layout, Code, Wand2 } from 'lucide-react';
 import Store3D from './Store3D';
 import AdminForm from './AdminForm';
+import { findBayById, getAllFloors, getAisleBounds } from '../utils/storeHelpers';
 
 interface SettingsProps {
   storeConfig: StoreConfig;
@@ -25,6 +26,8 @@ const Settings: React.FC<SettingsProps> = ({ storeConfig: initialStore, products
   const [showProductsInPreview, setShowProductsInPreview] = useState(true);
   const [expandedDepartmentId, setExpandedDepartmentId] = useState<string | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [selectedAisleId, setSelectedAisleId] = useState<string | null>(null);
+  const [selectedShelfId, setSelectedShelfId] = useState<string | null>(null);
 
   // Sync JSON when local state changes in form mode
   useEffect(() => {
@@ -54,14 +57,18 @@ const Settings: React.FC<SettingsProps> = ({ storeConfig: initialStore, products
     if (expandedProductId) {
       const product = localProducts.find(p => p.id === expandedProductId);
       if (product) {
-        const dept = localStore.departments.find(d => d.id === product.departmentId);
-        if (dept) setPreviewFloor(dept.floor);
+        const bayId = product.bayId || product.departmentId;
+        const bay = bayId ? findBayById(localStore, bayId) : undefined;
+        if (bay) setPreviewFloor(bay.floor);
       }
     } else if (expandedDepartmentId) {
-      const dept = localStore.departments.find(d => d.id === expandedDepartmentId);
-      if (dept) setPreviewFloor(dept.floor);
+      const bay = findBayById(localStore, expandedDepartmentId);
+      if (bay) setPreviewFloor(bay.floor);
+    } else if (selectedAisleId) {
+      const bounds = getAisleBounds(localStore, selectedAisleId);
+      if (bounds) setPreviewFloor(bounds.floor);
     }
-  }, [expandedProductId, expandedDepartmentId, localStore.departments, localProducts]);
+  }, [expandedProductId, expandedDepartmentId, selectedAisleId, localStore, localProducts]);
 
   const handleSave = () => {
     try {
@@ -73,7 +80,7 @@ const Settings: React.FC<SettingsProps> = ({ storeConfig: initialStore, products
         finalProducts = JSON.parse(productsJson);
       }
 
-      if (!finalStore.gridSize || !finalStore.departments) throw new Error("Invalid store structure");
+      if (!finalStore.gridSize || !finalStore.zones) throw new Error("Invalid store structure");
       if (!Array.isArray(finalProducts)) throw new Error("Products must be an array");
 
       setError(null);
@@ -164,6 +171,8 @@ const Settings: React.FC<SettingsProps> = ({ storeConfig: initialStore, products
               onDepartmentExpand={setExpandedDepartmentId}
               expandedProductId={expandedProductId}
               onProductExpand={setExpandedProductId}
+              onAisleSelect={setSelectedAisleId}
+              onShelfSelect={setSelectedShelfId}
               onChange={(s, p) => {
                 setLocalStore(s);
                 setLocalProducts(p);
@@ -215,7 +224,7 @@ const Settings: React.FC<SettingsProps> = ({ storeConfig: initialStore, products
               </button>
 
               <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl">
-                {[...new Set(localStore.departments.map(d => d.floor))].sort().map(f => (
+                {getAllFloors(localStore).map(f => (
                   <button
                     key={f}
                     onClick={() => setPreviewFloor(f)}
@@ -238,6 +247,8 @@ const Settings: React.FC<SettingsProps> = ({ storeConfig: initialStore, products
               showAllProducts={showProductsInPreview}
               showLabels={showProductsInPreview}
               targetDepartmentId={expandedDepartmentId}
+              targetAisleId={selectedAisleId}
+              targetShelfId={selectedShelfId}
             />
 
             {/* Admin HUD */}
@@ -245,7 +256,7 @@ const Settings: React.FC<SettingsProps> = ({ storeConfig: initialStore, products
               <div className="bg-white/80 backdrop-blur-xl border border-slate-200/50 p-6 rounded-[2rem] shadow-2xl flex items-center justify-around gap-8">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-4 h-4 rounded-full bg-slate-900 shadow-md border-2 border-white" />
-                  <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Departments</span>
+                  <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Bays</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-md border-2 border-white" />

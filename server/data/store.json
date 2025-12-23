@@ -28,22 +28,35 @@
       "name": "Fresh Milk",
       "levelCount": 5,
       "floor": 0,
-      "row": 10,
+      "row": 11,
       "column": 5,
-      "width": 8,
+      "width": 11,
       "depth": 4,
       "shelves": [
         {
           "id": "S1-A",
           "name": "Organic",
-          "levelCount": 5
+          "levelCount": 5,
+          "closedSides": [
+            "left",
+            "back"
+          ]
         },
         {
           "id": "S1-B",
           "name": "Standard",
           "levelCount": 5
+        },
+        {
+          "id": "S1-C",
+          "name": "Shelf C"
+        },
+        {
+          "id": "S1-D",
+          "name": "Shelf D"
         }
-      ]
+      ],
+      "shelfSpacing": 1
     },
     {
       "id": "S2",
@@ -80,14 +93,20 @@
         {
           "id": "S3-A",
           "name": "Pizza",
-          "levelCount": 5
+          "levelCount": 5,
+          "closedSides": [
+            "front",
+            "back",
+            "left"
+          ]
         },
         {
           "id": "S3-B",
           "name": "Veggie",
           "levelCount": 5
         }
-      ]
+      ],
+      "shelfSpacing": 3
     },
     {
       "id": "S4",

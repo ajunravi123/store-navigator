@@ -1,15 +1,56 @@
 
-import { StoreConfig, Product } from './types';
+import { StoreConfig, Product, Zone, Aisle, Bay } from './types';
 
-export const DEFAULT_STORE_CONFIG: StoreConfig = {
-  gridSize: { width: 50, depth: 60 },
-  entrance: { x: 25, z: 58, floor: 0 },
-  elevators: [
-    { x: 5, z: 5 },
-    { x: 45, z: 5 },
-    { x: 25, z: 5 }
-  ],
-  departments: [
+// Helper function to convert old department structure to new zone/aisle/bay structure
+function migrateDepartmentsToZones(departments: any[]): Zone[] {
+  // Group departments by floor and create zones
+  const floors = [...new Set(departments.map(d => d.floor))].sort();
+  const zones: Zone[] = [];
+
+  floors.forEach((floor, floorIdx) => {
+    const floorDepts = departments.filter(d => d.floor === floor);
+    
+    // Create a zone for each floor (or group by category if needed)
+    const zone: Zone = {
+      id: `Z${floorIdx + 1}`,
+      name: floor === 0 ? 'Grocery Zone' : 'Electronics & Home Zone',
+      aisles: []
+    };
+
+    // Group departments into aisles (every 3-4 departments per aisle)
+    const deptsPerAisle = 3;
+    for (let i = 0; i < floorDepts.length; i += deptsPerAisle) {
+      const aisleDepts = floorDepts.slice(i, i + deptsPerAisle);
+      const aisle: Aisle = {
+        id: `${zone.id}-A${Math.floor(i / deptsPerAisle) + 1}`,
+        name: `Aisle ${Math.floor(i / deptsPerAisle) + 1}`,
+        bays: aisleDepts.map((dept, idx) => {
+          const bay: Bay = {
+            id: `${dept.id}`,
+            name: dept.name,
+            floor: dept.floor,
+            row: dept.row,
+            column: dept.column,
+            width: dept.width,
+            depth: dept.depth,
+            shelves: dept.shelves || [],
+            levelCount: dept.levelCount,
+            shelfSpacing: dept.shelfSpacing
+          };
+          return bay;
+        })
+      };
+      zone.aisles.push(aisle);
+    }
+
+    zones.push(zone);
+  });
+
+  return zones;
+}
+
+// Legacy departments structure (for reference)
+const LEGACY_DEPARTMENTS = [
     {
       id: 'S1',
       name: 'Fresh Milk',
@@ -276,15 +317,43 @@ export const DEFAULT_STORE_CONFIG: StoreConfig = {
         { id: 'S19-B', name: 'Switch', levelCount: 5 }
       ]
     }
-  ]
+];
+
+export const DEFAULT_STORE_CONFIG: StoreConfig = {
+  gridSize: { width: 50, depth: 60 },
+  entrance: { x: 25, z: 58, floor: 0 },
+  elevators: [
+    { x: 5, z: 5 },
+    { x: 45, z: 5 },
+    { x: 25, z: 5 }
+  ],
+  zones: migrateDepartmentsToZones(LEGACY_DEPARTMENTS)
 };
+
+// Helper function to find zone/aisle/bay IDs from legacy departmentId
+function findLocationFromDepartmentId(config: StoreConfig, departmentId: string): { zoneId: string; aisleId: string; bayId: string } {
+  for (const zone of config.zones) {
+    for (const aisle of zone.aisles) {
+      for (const bay of aisle.bays) {
+        if (bay.id === departmentId) {
+          return { zoneId: zone.id, aisleId: aisle.id, bayId: bay.id };
+        }
+      }
+    }
+  }
+  // Fallback
+  return { zoneId: 'Z1', aisleId: 'Z1-A1', bayId: departmentId };
+}
+
+// Create a helper that uses DEFAULT_STORE_CONFIG
+const getLocation = (deptId: string) => findLocationFromDepartmentId(DEFAULT_STORE_CONFIG, deptId);
 
 export const DEFAULT_PRODUCTS: Product[] = [
   {
     id: 'P1',
     name: 'Organic Whole Milk',
     category: 'Dairy',
-    departmentId: 'S1',
+    ...getLocation('S1'),
     shelfId: 'S1-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/KlrTYcRXgsZmMLPx.png'
@@ -293,7 +362,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P2',
     name: 'Blueberry Yogurt',
     category: 'Dairy',
-    departmentId: 'S1',
+    ...getLocation('S1'),
     shelfId: 'S1-B',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/USlGGiKIQFHKNZGb.png'
@@ -302,7 +371,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P3',
     name: 'Cheddar Block',
     category: 'Deli',
-    departmentId: 'S2',
+    ...getLocation('S2'),
     shelfId: 'S2-B',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ohFNuPOYtAEgGBgt.png'
@@ -311,7 +380,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P4',
     name: 'Frozen Pepperoni Pizza',
     category: 'Frozen',
-    departmentId: 'S3',
+    ...getLocation('S3'),
     shelfId: 'S3-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/RrKIoZzBwfExaVXJ.png'
@@ -320,7 +389,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P5',
     name: 'Honey Nut O\'s',
     category: 'Breakfast',
-    departmentId: 'S4',
+    ...getLocation('S4'),
     shelfId: 'S4-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/vejuQHHmqyTlityb.png'
@@ -329,7 +398,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P6',
     name: 'Spaghetti Pasta',
     category: 'Pantry',
-    departmentId: 'S5',
+    ...getLocation('S5'),
     shelfId: 'S5-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/DrvNgruUtgUkRpws.png'
@@ -338,7 +407,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P7',
     name: 'Tomato Basil Sauce',
     category: 'Pantry',
-    departmentId: 'S5',
+    ...getLocation('S5'),
     shelfId: 'S5-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HxqpAUTMjnOguUXz.png'
@@ -347,7 +416,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P8',
     name: 'Chicken Noodle Soup',
     category: 'Canned',
-    departmentId: 'S6',
+    ...getLocation('S6'),
     shelfId: 'S6-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/NsMygnwfYcFNDczd.png'
@@ -356,7 +425,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P9',
     name: 'Classic Potato Chips',
     category: 'Snacks',
-    departmentId: 'S7',
+    ...getLocation('S7'),
     shelfId: 'S7-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HrbXAkOeeMcqLNLe.png'
@@ -365,7 +434,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P10',
     name: 'Sparkling Water 6pk',
     category: 'Beverages',
-    departmentId: 'S8',
+    ...getLocation('S8'),
     shelfId: 'S8-B',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/MlGLTsqJUVyIaTFj.png'
@@ -374,7 +443,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P11',
     name: 'Dark Chocolate Bar',
     category: 'Confectionery',
-    departmentId: 'S9',
+    ...getLocation('S9'),
     shelfId: 'S9-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJbkuqVkxAbwtbhr.png'
@@ -383,7 +452,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P12',
     name: 'Sourdough Loaf',
     category: 'Bakery',
-    departmentId: 'S10',
+    ...getLocation('S10'),
     shelfId: 'S10-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/gnLqnNRnYhHQPmzj.png'
@@ -392,7 +461,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P13',
     name: 'Fresh Bananas',
     category: 'Produce',
-    departmentId: 'S11',
+    ...getLocation('S11'),
     shelfId: 'S11-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/fJjRZqkQgrSbPKQP.png'
@@ -401,7 +470,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P14',
     name: 'Pro Gaming Laptop',
     category: 'Electronics',
-    departmentId: 'S12',
+    ...getLocation('S12'),
     shelfId: 'S12-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/IuIjkVpuAjviGAAr.png'
@@ -410,7 +479,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P15',
     name: 'Smartphone Ultra',
     category: 'Electronics',
-    departmentId: 'S13',
+    ...getLocation('S13'),
     shelfId: 'S13-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/raeZhHdzRPczTHkB.png'
@@ -419,7 +488,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P16',
     name: '65" OLED 4K TV',
     category: 'Electronics',
-    departmentId: 'S14',
+    ...getLocation('S14'),
     shelfId: 'S14-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/xbqVtCEGApjgAhvO.png'
@@ -428,7 +497,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P17',
     name: 'Cast Iron Skillet',
     category: 'Home',
-    departmentId: 'S15',
+    ...getLocation('S15'),
     shelfId: 'S15-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ClhjHFDZzlXFrlvv.png'
@@ -437,7 +506,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P18',
     name: 'Robot Vacuum Cleaner',
     category: 'Home',
-    departmentId: 'S16',
+    ...getLocation('S16'),
     shelfId: 'S16-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/nCsaZKnnEbxNpzDs.png'
@@ -446,7 +515,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P19',
     name: 'Legendary Action Figure',
     category: 'Toys',
-    departmentId: 'S17',
+    ...getLocation('S17'),
     shelfId: 'S17-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJzzGGbAdSoZdLRV.png'
@@ -455,7 +524,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P20',
     name: 'Space Strategy Game',
     category: 'Games',
-    departmentId: 'S18',
+    ...getLocation('S18'),
     shelfId: 'S18-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/zfDTeZCCtgZoYDrw.png'
@@ -464,7 +533,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
     id: 'P21',
     name: 'RPG Master Edition PS5',
     category: 'Games',
-    departmentId: 'S19',
+    ...getLocation('S19'),
     shelfId: 'S19-A',
     levels: [0, 1],
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/115397999/PIIApjZksxBabRZY.png'
