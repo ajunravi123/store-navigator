@@ -145,39 +145,47 @@ const App: React.FC = () => {
     const shelfCenterX = targetX; // Exact center X of the shelf section
     
     // Position path endpoint at the center of the open side with proper spacing
-    // Use a safe distance (0.8 units = ~80cm) to ensure user doesn't overlap with shelf blocks
-    const safeDistance = 0.8; // Safe walking distance from shelf face
+    // Use a tighter safe distance (0.2 units) to visually touch the shelf without overlap
+    const safeDistance = 0.2; // Bring path endpoint closer to the shelf face
     
-    let targetZ: number;
-    let targetXFinal: number = shelfCenterX; // Always center X of shelf section
-    
-    if (isFrontClosed && !isBackClosed) {
-      // Front closed, back open - endpoint at center of back face, safely away
-      targetZ = backFaceZ - safeDistance; // Safe distance behind back face, at center
-      targetXFinal = shelfCenterX; // Exact center X of shelf section
-    } else if (isBackClosed && !isFrontClosed) {
-      // Back closed, front open - endpoint at center of front face, safely away
-      targetZ = frontFaceZ + safeDistance; // Safe distance in front of front face (in aisle), at center
-      targetXFinal = shelfCenterX; // Exact center X of shelf section
-    } else if (isFrontClosed && isBackClosed) {
-      // Both front and back are closed - check left/right sides
-      if (!isRightClosed) {
-        // Right side is open - endpoint at center of right face, safely away
-        targetXFinal = shelfRightX + safeDistance; // Safe distance to the right, at center Z
-        targetZ = shelfCenterZ; // Exact center Z of shelf (middle of the side)
-      } else if (!isLeftClosed) {
-        // Left side is open - endpoint at center of left face, safely away
-        targetXFinal = shelfLeftX - safeDistance; // Safe distance to the left, at center Z
-        targetZ = shelfCenterZ; // Exact center Z of shelf (middle of the side)
-      } else {
-        // All sides closed - fallback to front face center with safe distance
+    let targetZ: number = shelfCenterZ;
+    let targetXFinal: number = shelfCenterX; // Default to center
+
+    // Prefer the longer open side: width (front/back) vs. depth (left/right)
+    const isWideShelf = unitWidth > shelfDepth;
+    const frontOpen = !isFrontClosed;
+    const backOpen = !isBackClosed;
+    const leftOpen = !isLeftClosed;
+    const rightOpen = !isRightClosed;
+
+    if (isWideShelf) {
+      // Prefer front/back faces first
+      if (frontOpen) {
         targetZ = frontFaceZ + safeDistance;
-        targetXFinal = shelfCenterX; // Exact center X
+      } else if (backOpen) {
+        targetZ = backFaceZ - safeDistance;
+      } else if (rightOpen) {
+        targetXFinal = shelfRightX + safeDistance;
+      } else if (leftOpen) {
+        targetXFinal = shelfLeftX - safeDistance;
+      } else {
+        // All closed: fallback
+        targetZ = frontFaceZ + safeDistance;
       }
     } else {
-      // Both open - endpoint at center of front face, safely away (preferred)
-      targetZ = frontFaceZ + safeDistance; // Safe distance in front of front face (in aisle)
-      targetXFinal = shelfCenterX; // Exact center X of shelf section
+      // Prefer left/right faces first
+      if (rightOpen) {
+        targetXFinal = shelfRightX + safeDistance;
+      } else if (leftOpen) {
+        targetXFinal = shelfLeftX - safeDistance;
+      } else if (frontOpen) {
+        targetZ = frontFaceZ + safeDistance;
+      } else if (backOpen) {
+        targetZ = backFaceZ - safeDistance;
+      } else {
+        // All closed: fallback
+        targetZ = frontFaceZ + safeDistance;
+      }
     }
 
     // Boundary checks to keep path somewhat valid within grid
@@ -193,14 +201,20 @@ const App: React.FC = () => {
     const path = findShortestPath(storeConfig, storeConfig.entrance, target);
     
     // Debug logging
-    if (activeProduct.name === 'Frozen Pepperoni Pizza') {
-      console.log('Path calculation for Frozen Pepperoni Pizza:');
+    if (activeProduct.name === 'Frozen Pepperoni Pizza' || activeProduct.name === 'Vanilla Extract') {
+      console.log(`Path calculation for ${activeProduct.name}:`);
       console.log('Target endpoint:', target);
+      console.log('Target bay:', targetBay.id, 'Floor:', targetBay.floor);
+      console.log('Shelf index:', validShelfIndex, 'Shelf ID:', activeProduct.shelfId);
       console.log('Closed sides:', closedSides);
       console.log('Shelf bounds - Left:', shelfLeftX, 'Right:', shelfRightX);
       console.log('Front face Z:', frontFaceZ, 'Back face Z:', backFaceZ, 'Center Z:', shelfCenterZ);
       console.log('Path length:', path.length);
-      console.log('Path points:', path.slice(0, 5), '...', path.slice(-5));
+      if (path.length > 0) {
+        console.log('Path points:', path.slice(0, 5), '...', path.slice(-5));
+      } else {
+        console.warn('PATH IS EMPTY! Check pathfinder logic.');
+      }
     }
 
     return path;

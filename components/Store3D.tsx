@@ -168,7 +168,26 @@ const DetailedShelfUnit: React.FC<{
         const y = -height / 2 + 0.2 + (i * shelfSpacing);
 
         const showFront = frontConfig && i < frontConfig.levelCount;
-        const frontHighlight = showFront && frontConfig.targetLevels?.includes(i);
+        // Highlight if it's the target shelf - blink rows that match the product's levels
+        // If targetLevels is provided and not empty, only highlight those specific levels
+        // If targetLevels is undefined/null/empty, highlight all levels on target shelf
+        const frontHighlight = showFront && frontConfig.isTarget && (
+          !frontConfig.targetLevels || 
+          frontConfig.targetLevels.length === 0 || 
+          frontConfig.targetLevels.includes(i)
+        );
+        
+        // Debug logging for blinking - log for any target product
+        if (frontConfig?.isTarget && i < 3) {
+          console.log(`Row ${i} highlight check for ${frontConfig.name}:`, {
+            showFront,
+            isTarget: frontConfig.isTarget,
+            targetLevels: frontConfig.targetLevels,
+            levelIndex: i,
+            shouldHighlight: frontHighlight,
+            levelCount: frontConfig.levelCount
+          });
+        }
 
         return (
           <group key={i} position={[0, y, 0]}>
@@ -263,15 +282,31 @@ const BayComponent: React.FC<{ bay: Bay; aisleId: string | null; isTarget: boole
   const aisleColor = aisleId ? getAisleColor(aisleId) : '#64748b';
 
   const getShelfConfig = (shelf: Shelf) => {
-    const isTargetShelf = isTarget && targetProduct?.shelfId === shelf.id;
+    // If the product's shelfId is missing in this bay, fallback to highlight all shelves in the target bay
+    const shelfExistsInBay = bay.shelves.some(s => s.id === targetProduct?.shelfId);
+    const isTargetShelf = isTarget && (shelfExistsInBay ? targetProduct?.shelfId === shelf.id : true);
     // Use aisle color instead of bay hash color - all shelves in same aisle have same color
-    return {
+    const config = {
       color: aisleColor,
       isTarget: isTargetShelf,
-      targetLevels: isTargetShelf ? targetProduct?.levels : undefined,
+      targetLevels: isTargetShelf && targetProduct?.levels ? targetProduct.levels : undefined,
       name: shelf.name,
       levelCount: shelf.levelCount || 5
     };
+    
+    // Debug logging for blinking - log for any target product
+    if (isTargetShelf && targetProduct) {
+      console.log(`Shelf config for ${targetProduct.name}:`, {
+        shelfId: shelf.id,
+        productShelfId: targetProduct.shelfId,
+        isTarget: config.isTarget,
+        targetLevels: config.targetLevels,
+        productLevels: targetProduct.levels,
+        levelCount: config.levelCount
+      });
+    }
+    
+    return config;
   };
 
   return (
@@ -341,6 +376,15 @@ const PathLine: React.FC<{ points: PathNode[]; currentFloor: number }> = ({ poin
 
   const animatedPoints = useMemo(() => {
     const floorPoints = points.filter(p => p.floor === currentFloor);
+    // Debug logging for path display
+    if (points.length > 0 && floorPoints.length < 2) {
+      console.log('PathLine: Points exist but not on current floor', {
+        totalPoints: points.length,
+        floorPoints: floorPoints.length,
+        currentFloor,
+        pointFloors: [...new Set(points.map(p => p.floor))]
+      });
+    }
     if (floorPoints.length < 2) return [];
     const currentCount = Math.max(2, Math.floor(floorPoints.length * progress));
     return floorPoints.slice(0, currentCount).map(p => new THREE.Vector3(p.x, 0.02, p.z));
@@ -349,8 +393,8 @@ const PathLine: React.FC<{ points: PathNode[]; currentFloor: number }> = ({ poin
   if (animatedPoints.length < 2) return null;
   return (
     <group>
-      <Line points={animatedPoints} color="#3b82f6" lineWidth={12} transparent opacity={0.9} />
-      <Line points={animatedPoints} color="#93c5fd" lineWidth={26} transparent opacity={0.3} />
+      <Line points={animatedPoints} color="#3b82f6" lineWidth={6} transparent opacity={0.9} />
+      <Line points={animatedPoints} color="#93c5fd" lineWidth={12} transparent opacity={0.25} />
     </group>
   );
 };

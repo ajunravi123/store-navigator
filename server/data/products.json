@@ -1,360 +1,668 @@
 [
   {
-    "id": "P1",
-    "name": "Organic Whole Milk",
-    "category": "Dairy",
-    "departmentId": "S1",
-    "bayId": "S1",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A1",
-    "shelfId": "S1-A",
+    "id": "P001",
+    "name": "Bananas",
+    "category": "Produce",
+    "departmentId": "Produce",
+    "zoneId": "Z0",
+    "aisleId": "Z0-A1",
+    "bayId": "S11",
+    "shelfId": "S11-A",
     "levels": [
       0,
       1,
       2
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/KlrTYcRXgsZmMLPx.png",
-    "sku": "MILK-ORG-001",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Bananas.png",
+    "sku": "BAN-001",
+    "stockCount": 140
   },
   {
-    "id": "P2",
-    "name": "Blueberry Yogurt",
-    "category": "Dairy",
-    "departmentId": "S1",
-    "bayId": "S1",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A1",
-    "shelfId": "S1-B",
+    "id": "P038",
+    "name": "BBQ Sauce",
+    "category": "Condiments",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A5",
+    "bayId": "PW-E2",
+    "shelfId": "PW-E2-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/USlGGiKIQFHKNZGb.png",
-    "sku": "YOG-BLU-002",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/BBQ%20Sauce.png",
+    "sku": "BBQ-SAU-038",
+    "stockCount": 81
   },
   {
-    "id": "P3",
-    "name": "Cheddar Block",
-    "category": "Deli",
-    "departmentId": "S2",
+    "id": "P005",
+    "name": "Russet Potatoes",
+    "category": "Produce",
+    "departmentId": "Produce",
+    "zoneId": "Z0",
+    "aisleId": "Z0-A2",
+    "bayId": "S5",
+    "shelfId": "S5-A",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Russet%20Potatoes.png",
+    "sku": "POT-RUS-005",
+    "stockCount": 160
+  },
+  {
+    "id": "E001",
+    "name": "Laptop 15 Inch",
+    "category": "Laptops",
+    "departmentId": "Electronics",
+    "zoneId": "Z6",
+    "aisleId": "Z6-A1",
+    "bayId": "S12",
+    "shelfId": "S12-B",
+    "levels": [
+      0,
+      1,
+      2
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Laptop%2015%20Inch.png",
+    "sku": "LAP-DELL-001",
+    "stockCount": 25
+  },
+  {
+    "id": "E002",
+    "name": "Gaming Monitor 22 Inch",
+    "category": "Laptops",
+    "departmentId": "Electronics",
+    "zoneId": "Z6",
+    "aisleId": "Z6-A1",
+    "bayId": "B37",
+    "shelfId": "B37-B",
+    "levels": [
+      0,
+      1,
+      2
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Gaming%20Monitor%2022%20Inch.png",
+    "sku": "LAP-APL-002",
+    "stockCount": 18
+  },
+  {
+    "id": "E004",
+    "name": "Soundbar 300W",
+    "category": "Home Audio",
+    "departmentId": "Electronics",
+    "zoneId": "Z8",
+    "aisleId": "Z8-A2",
+    "bayId": "S14",
+    "shelfId": "S14-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Soundbar%20300W.png",
+    "sku": "AUD-SON-004",
+    "stockCount": 15
+  },
+  {
+    "id": "E005",
+    "name": "Gaming Mouse MX Master 3",
+    "category": "Computer Accessories",
+    "departmentId": "Electronics",
+    "zoneId": "Z10",
+    "aisleId": "Z10-A2",
+    "bayId": "PW-F1-S1",
+    "shelfId": "PW-F1-S1-A",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Gaming%20Mouse%20MX%20Master%203.png",
+    "sku": "ACC-LOG-005",
+    "stockCount": 35
+  },
+  {
+    "id": "P002",
+    "name": "Granny Smith Apples",
+    "category": "Produce",
+    "departmentId": "Produce",
+    "zoneId": "Z0",
+    "aisleId": "Z0-A1",
+    "bayId": "S11",
+    "shelfId": "S11-B",
+    "levels": [
+      0,
+      1,
+      2
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Granny%20Smith%20Apples.png",
+    "sku": "APP-GRN-002",
+    "stockCount": 120
+  },
+  {
+    "id": "P022",
+    "name": "Spaghetti Pasta",
+    "category": "Pasta",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z4-A2",
+    "bayId": "B43",
+    "shelfId": "B43-A",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Spaghetti%20Pasta.png",
+    "sku": "PAS-SPG-022",
+    "stockCount": 95
+  },
+  {
+    "id": "P003",
+    "name": "Navel Oranges",
+    "category": "Produce",
+    "departmentId": "Produce",
+    "zoneId": "Z0",
+    "aisleId": "Z0-A1",
     "bayId": "S2",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A1",
     "shelfId": "S2-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ohFNuPOYtAEgGBgt.png",
-    "sku": "CHED-BLK-003",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Navel%20Oranges.png",
+    "sku": "ORG-NAV-003",
+    "stockCount": 95
   },
   {
-    "id": "P4",
-    "name": "Frozen Pepperoni Pizza",
-    "category": "Frozen",
-    "departmentId": "S3",
-    "bayId": "S3",
+    "id": "P004",
+    "name": "Roma Tomatoes",
+    "category": "Produce",
+    "departmentId": "Produce",
+    "zoneId": "Z0",
+    "aisleId": "Z0-A2",
+    "bayId": "S4",
+    "shelfId": "S4-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Roma%20Tomatoes.png",
+    "sku": "TOM-ROM-004",
+    "stockCount": 110
+  },
+  {
+    "id": "P006",
+    "name": "Whole Milk",
+    "category": "Dairy",
+    "departmentId": "Dairy",
     "zoneId": "Z1",
     "aisleId": "Z1-A1",
-    "shelfId": "S3-A",
-    "levels": [
-      0,
-      1
-    ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/RrKIoZzBwfExaVXJ.png",
-    "sku": "PIZ-PEP-004",
-    "stockCount": 100
-  },
-  {
-    "id": "P5",
-    "name": "Honey Nut O's",
-    "category": "Breakfast",
-    "departmentId": "S4",
-    "bayId": "S4",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A2",
-    "shelfId": "S4-A",
-    "levels": [
-      0,
-      1
-    ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/vejuQHHmqyTlityb.png",
-    "sku": "CER-HNY-005",
-    "stockCount": 100
-  },
-  {
-    "id": "P6",
-    "name": "Spaghetti Pasta",
-    "category": "Pantry",
-    "departmentId": "S5",
-    "bayId": "S5",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A2",
-    "shelfId": "S5-A",
-    "levels": [
-      0,
-      1
-    ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/DrvNgruUtgUkRpws.png",
-    "sku": "PAS-SPG-006",
-    "stockCount": 100
-  },
-  {
-    "id": "P7",
-    "name": "Tomato Basil Sauce",
-    "category": "Pantry",
-    "departmentId": "S5",
-    "bayId": "S5",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A2",
-    "shelfId": "S5-A",
-    "levels": [
-      0,
-      1
-    ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HxqpAUTMjnOguUXz.png",
-    "sku": "SAU-TOM-007",
-    "stockCount": 100
-  },
-  {
-    "id": "P8",
-    "name": "Chicken Noodle Soup",
-    "category": "Canned",
-    "departmentId": "S6",
-    "bayId": "S6",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A2",
-    "shelfId": "S6-A",
-    "levels": [
-      0,
-      1
-    ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/NsMygnwfYcFNDczd.png",
-    "sku": "CAN-CHK-008",
-    "stockCount": 100
-  },
-  {
-    "id": "P9",
-    "name": "Classic Potato Chips",
-    "category": "Snacks",
-    "departmentId": "S7",
     "bayId": "S7",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A3",
     "shelfId": "S7-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/HrbXAkOeeMcqLNLe.png",
-    "sku": "CHP-CLS-009",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Whole%20Milk.png",
+    "sku": "MLK-WHL-006",
+    "stockCount": 85
   },
   {
-    "id": "P10",
-    "name": "Sparkling Water 6pk",
-    "category": "Beverages",
-    "departmentId": "S8",
-    "bayId": "S8",
+    "id": "P007",
+    "name": "Greek Yogurt Plain",
+    "category": "Dairy",
+    "departmentId": "Dairy",
     "zoneId": "Z1",
-    "aisleId": "Z1-A3",
+    "aisleId": "Z1-A1",
+    "bayId": "S7",
+    "shelfId": "S7-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Greek%20Yogurt%20Plain.png",
+    "sku": "YOG-GRK-007",
+    "stockCount": 70
+  },
+  {
+    "id": "P008",
+    "name": "Unsalted Butter",
+    "category": "Dairy",
+    "departmentId": "Dairy",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A2",
+    "bayId": "S8",
+    "shelfId": "S8-A",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Unsalted%20Butter.png",
+    "sku": "BUT-UNS-008",
+    "stockCount": 65
+  },
+  {
+    "id": "P009",
+    "name": "Cheddar Cheese Block",
+    "category": "Dairy",
+    "departmentId": "Dairy",
+    "zoneId": "Z1",
+    "aisleId": "Z1-A2",
+    "bayId": "S8",
     "shelfId": "S8-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/MlGLTsqJUVyIaTFj.png",
-    "sku": "WTR-SPK-010",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Cheddar%20Cheese%20Block.png",
+    "sku": "CHS-CHED-009",
+    "stockCount": 55
   },
   {
-    "id": "P11",
-    "name": "Dark Chocolate Bar",
-    "category": "Confectionery",
-    "departmentId": "S9",
-    "bayId": "S9",
+    "id": "P010",
+    "name": "Sour Cream",
+    "category": "Dairy",
+    "departmentId": "Dairy",
     "zoneId": "Z1",
     "aisleId": "Z1-A3",
-    "shelfId": "S9-A",
+    "bayId": "S3",
+    "shelfId": "S3-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJbkuqVkxAbwtbhr.png",
-    "sku": "CHC-DRK-011",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Sour%20Cream.png",
+    "sku": "CRM-SOUR-010",
+    "stockCount": 60
   },
   {
-    "id": "P12",
-    "name": "Sourdough Loaf",
+    "id": "P015",
+    "name": "White Sandwich Bread",
     "category": "Bakery",
-    "departmentId": "S10",
-    "bayId": "S10",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A4",
-    "shelfId": "S10-A",
+    "departmentId": "Bakery",
+    "zoneId": "Z4",
+    "aisleId": "Z4-A6",
+    "bayId": "B44",
+    "shelfId": "B44-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/gnLqnNRnYhHQPmzj.png",
-    "sku": "BRD-SRD-012",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/White%20Sandwich%20Bread.png",
+    "sku": "BRD-WHT-015",
+    "stockCount": 75
   },
   {
-    "id": "P13",
-    "name": "Fresh Bananas",
-    "category": "Produce",
-    "departmentId": "S11",
-    "bayId": "S11",
-    "zoneId": "Z1",
-    "aisleId": "Z1-A4",
-    "shelfId": "S11-A",
+    "id": "P016",
+    "name": "Whole Wheat Bread",
+    "category": "Bakery",
+    "departmentId": "Bakery",
+    "zoneId": "Z4",
+    "aisleId": "Z4-A6",
+    "bayId": "B44",
+    "shelfId": "B44-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/fJjRZqkQgrSbPKQP.png",
-    "sku": "FRT-BAN-013",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Whole%20Wheat%20Bread.png",
+    "sku": "BRD-WHT-016",
+    "stockCount": 68
   },
   {
-    "id": "P14",
-    "name": "Pro Gaming Laptop",
-    "category": "Electronics",
-    "departmentId": "S12",
-    "bayId": "S12",
-    "zoneId": "Z2",
-    "aisleId": "Z2-A1",
-    "shelfId": "S12-A",
+    "id": "P017",
+    "name": "Butter Croissants",
+    "category": "Bakery",
+    "departmentId": "Bakery",
+    "zoneId": "Z4",
+    "aisleId": "Z4-A6",
+    "bayId": "B44",
+    "shelfId": "B44-B",
     "levels": [
-      0,
-      1
+      0
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/IuIjkVpuAjviGAAr.png",
-    "sku": "LAP-GAM-014",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Butter%20Croissants.png",
+    "sku": "CRS-BTR-017",
+    "stockCount": 42
   },
   {
-    "id": "P15",
-    "name": "Smartphone Ultra",
-    "category": "Electronics",
-    "departmentId": "S13",
-    "bayId": "S13",
-    "zoneId": "Z2",
-    "aisleId": "Z2-A1",
-    "shelfId": "S13-A",
+    "id": "P018",
+    "name": "Chocolate Muffins",
+    "category": "Bakery",
+    "departmentId": "Bakery",
+    "zoneId": "Z4",
+    "aisleId": "Z4-A6",
+    "bayId": "B44",
+    "shelfId": "B44-B",
     "levels": [
-      0,
-      1
+      0
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/raeZhHdzRPczTHkB.png",
-    "sku": "PHN-ULT-015",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Chocolate%20Muffins.png",
+    "sku": "MUF-CHC-018",
+    "stockCount": 38
   },
   {
-    "id": "P16",
-    "name": "65\" OLED 4K TV",
-    "category": "Electronics",
-    "departmentId": "S14",
-    "bayId": "S14",
-    "zoneId": "Z2",
-    "aisleId": "Z2-A1",
-    "shelfId": "S14-A",
+    "id": "P019",
+    "name": "Blueberry Bagels",
+    "category": "Bakery",
+    "departmentId": "Bakery",
+    "zoneId": "Z4",
+    "aisleId": "Z4-A6",
+    "bayId": "B44",
+    "shelfId": "B44-B",
     "levels": [
-      0,
-      1
+      0
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/xbqVtCEGApjgAhvO.png",
-    "sku": "TV-OLED-016",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Blueberry%20Bagels.png",
+    "sku": "BAG-BLU-019",
+    "stockCount": 44
   },
   {
-    "id": "P17",
-    "name": "Cast Iron Skillet",
-    "category": "Home",
-    "departmentId": "S15",
-    "bayId": "S15",
-    "zoneId": "Z2",
-    "aisleId": "Z2-A2",
-    "shelfId": "S15-A",
+    "id": "P024",
+    "name": "Extra Virgin Olive Oil",
+    "category": "Oils",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A3",
+    "bayId": "PW-E4",
+    "shelfId": "PW-E4-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/ClhjHFDZzlXFrlvv.png",
-    "sku": "SKL-CST-017",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Extra%20Virgin%20Olive%20Oil.png",
+    "sku": "OIL-OLV-024",
+    "stockCount": 72
   },
   {
-    "id": "P18",
-    "name": "Robot Vacuum Cleaner",
-    "category": "Home",
-    "departmentId": "S16",
-    "bayId": "S16",
-    "zoneId": "Z2",
-    "aisleId": "Z2-A2",
-    "shelfId": "S16-A",
+    "id": "P026",
+    "name": "Sea Salt",
+    "category": "Spices",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A3",
+    "bayId": "PW-E3",
+    "shelfId": "PW-E3-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/nCsaZKnnEbxNpzDs.png",
-    "sku": "VAC-ROB-018",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Sea%20Salt.png",
+    "sku": "SLT-SEA-026",
+    "stockCount": 155
   },
   {
-    "id": "P19",
-    "name": "Legendary Action Figure",
-    "category": "Toys",
-    "departmentId": "S17",
-    "bayId": "S17",
-    "zoneId": "Z2",
-    "aisleId": "Z2-A3",
-    "shelfId": "S17-A",
+    "id": "P027",
+    "name": "Peanut Butter Creamy",
+    "category": "Spreads",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A5",
+    "bayId": "PW-E2",
+    "shelfId": "PW-E2-A",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/dJzzGGbAdSoZdLRV.png",
-    "sku": "TOY-ACT-019",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Peanut%20Butter%20Creamy.png",
+    "sku": "PBT-CRM-027",
+    "stockCount": 92
   },
   {
-    "id": "P20",
-    "name": "Space Strategy Game",
-    "category": "Games",
-    "departmentId": "S18",
-    "bayId": "S18",
-    "zoneId": "Z2",
-    "aisleId": "Z2-A3",
-    "shelfId": "S18-A",
+    "id": "P028",
+    "name": "Grape Jelly",
+    "category": "Spreads",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A5",
+    "bayId": "PW-E2",
+    "shelfId": "PW-E2-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/zfDTeZCCtgZoYDrw.png",
-    "sku": "GAM-STR-020",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Grape%20Jelly.png",
+    "sku": "JLY-GRP-028",
+    "stockCount": 78
   },
   {
-    "id": "P21",
-    "name": "RPG Master Edition PS5",
-    "category": "Games",
-    "departmentId": "S19",
-    "bayId": "S19",
-    "zoneId": "Z2",
-    "aisleId": "Z2-A3",
-    "shelfId": "S19-A",
+    "id": "P030",
+    "name": "Instant Oatmeal",
+    "category": "Breakfast",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z4-A6",
+    "bayId": "B44",
+    "shelfId": "B44-B",
     "levels": [
       0,
       1
     ],
-    "image": "https://files.manuscdn.com/user_upload_by_module/session_file/115397999/PIIApjZksxBabRZY.png",
-    "sku": "GAM-RPG-021",
-    "stockCount": 100
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Instant%20Oatmeal.png",
+    "sku": "OAT-INS-030",
+    "stockCount": 110
+  },
+  {
+    "id": "P031",
+    "name": "Cornflakes",
+    "category": "Breakfast",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z4-A6",
+    "bayId": "B44",
+    "shelfId": "B44-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Cornflakes.png",
+    "sku": "CER-CRN-031",
+    "stockCount": 98
+  },
+  {
+    "id": "P032",
+    "name": "Black Coffee Ground",
+    "category": "Beverages",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A4",
+    "bayId": "PW-E5",
+    "shelfId": "PW-E5-A",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Black%20Coffee%20Ground.png",
+    "sku": "COF-BLK-032",
+    "stockCount": 65
+  },
+  {
+    "id": "P033",
+    "name": "Green Tea Bags",
+    "category": "Beverages",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A4",
+    "bayId": "PW-E5",
+    "shelfId": "PW-E5-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Green%20Tea%20Bags.png",
+    "sku": "TEA-GRN-033",
+    "stockCount": 74
+  },
+  {
+    "id": "P036",
+    "name": "Ketchup",
+    "category": "Condiments",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A5",
+    "bayId": "PW-E2",
+    "shelfId": "PW-E2-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Ketchup.png",
+    "sku": "KET-RED-036",
+    "stockCount": 90
+  },
+  {
+    "id": "P037",
+    "name": "Yellow Mustard",
+    "category": "Condiments",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A5",
+    "bayId": "PW-E2",
+    "shelfId": "PW-E2-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Yellow%20Mustard.png",
+    "sku": "MUS-YLW-037",
+    "stockCount": 76
+  },
+  {
+    "id": "P023",
+    "name": "Marinara Sauce",
+    "category": "Sauces",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A2",
+    "bayId": "PW-E2",
+    "shelfId": "PW-E2-A",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Marinara%20Sauce.png",
+    "sku": "SAU-MAR-023",
+    "stockCount": 88
+  },
+  {
+    "id": "P039",
+    "name": "Soy Sauce",
+    "category": "Condiments",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A5",
+    "bayId": "PW-E3",
+    "shelfId": "PW-E3-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Soy%20Sauce.png",
+    "sku": "SOY-SAU-039",
+    "stockCount": 67
+  },
+  {
+    "id": "P043",
+    "name": "Vanilla Extract",
+    "category": "Baking",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A3",
+    "bayId": "PW-E3",
+    "shelfId": "PW-E3-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Vanilla%20Extract.png",
+    "sku": "VAN-EXT-043",
+    "stockCount": 52
+  },
+  {
+    "id": "P044",
+    "name": "Cooking Spray",
+    "category": "Oils",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A3",
+    "bayId": "PW-E4",
+    "shelfId": "PW-E4-B",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Cooking%20Spray.png",
+    "sku": "COOK-SPR-044",
+    "stockCount": 69
+  },
+  {
+    "id": "P046",
+    "name": "Salsa Medium",
+    "category": "Condiments",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A5",
+    "bayId": "PW-E2",
+    "shelfId": "PW-E2-A",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Salsa%20Medium.png",
+    "sku": "SAL-MED-046",
+    "stockCount": 84
+  },
+  {
+    "id": "P047",
+    "name": "Canned Black Beans",
+    "category": "Canned",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A6",
+    "bayId": "S6",
+    "shelfId": "S6-B",
+    "levels": [
+      0,
+      1,
+      2
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Canned%20Black%20Beans.png",
+    "sku": "CAN-BLK-047",
+    "stockCount": 150
+  },
+  {
+    "id": "P048",
+    "name": "Canned Sweet Corn",
+    "category": "Canned",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A6",
+    "bayId": "S6",
+    "shelfId": "S6-B",
+    "levels": [
+      0,
+      1,
+      2
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Canned%20Sweet%20Corn.png",
+    "sku": "CAN-COR-048",
+    "stockCount": 145
+  },
+  {
+    "id": "P049",
+    "name": "Vegetable Oil",
+    "category": "Oils",
+    "departmentId": "Pantry",
+    "zoneId": "Z4",
+    "aisleId": "Z5-A3",
+    "bayId": "PW-E4",
+    "shelfId": "PW-E4-A",
+    "levels": [
+      0,
+      1
+    ],
+    "image": "https://storage.googleapis.com/tools-universe-bucket/NRF/Store_Navigator/Vegetable%20Oil.png",
+    "sku": "OIL-VEG-049",
+    "stockCount": 97
   }
 ]

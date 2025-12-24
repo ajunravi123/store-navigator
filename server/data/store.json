@@ -1,189 +1,280 @@
 {
   "gridSize": {
     "width": 50,
-    "depth": 60
+    "depth": 54
   },
   "entrance": {
     "x": 25,
-    "z": 58,
+    "z": 54,
     "floor": 0
   },
   "elevators": [
     {
-      "x": 5,
-      "z": 5
+      "x": 13,
+      "z": 4
     },
     {
-      "x": 45,
-      "z": 5
+      "x": 26,
+      "z": 4
     },
     {
-      "x": 25,
-      "z": 5
+      "x": 38,
+      "z": 4
     }
   ],
   "zones": [
     {
-      "id": "Z1",
-      "name": "Grocery Zone",
+      "id": "Z0",
+      "name": "Fresh Produce Zone",
       "aisles": [
         {
-          "id": "Z1-A1",
-          "name": "Aisle 1",
+          "id": "Z0-A1",
+          "name": "Fresh Fruits Aisle",
           "bays": [
             {
-              "id": "S1",
-              "name": "Fresh Milk",
+              "id": "S11",
+              "name": "Fresh Fruits Bay",
               "floor": 0,
-              "row": 11,
-              "column": 5,
-              "width": 11,
-              "depth": 4,
+              "row": 40,
+              "column": 4,
+              "width": 8,
+              "depth": 9,
               "shelves": [
                 {
-                  "id": "S1-A",
-                  "name": "Organic",
+                  "id": "S11-A",
+                  "name": "Bananas & Tropical Fruits",
                   "levelCount": 5,
                   "closedSides": [
-                    "left",
-                    "back"
+                    "right"
                   ]
                 },
                 {
-                  "id": "S1-B",
-                  "name": "Standard",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S1-C",
-                  "name": "Shelf C"
-                },
-                {
-                  "id": "S1-D",
-                  "name": "Shelf D"
-                }
-              ],
-              "levelCount": 5,
-              "shelfSpacing": 1
-            },
-            {
-              "id": "S2",
-              "name": "Cheese & Deli",
-              "floor": 0,
-              "row": 18,
-              "column": 5,
-              "width": 8,
-              "depth": 4,
-              "shelves": [
-                {
-                  "id": "S2-A",
-                  "name": "Imported",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S2-B",
-                  "name": "Local",
-                  "levelCount": 5
+                  "id": "S11-B",
+                  "name": "Apples & Seasonal Fruits",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
                 }
               ],
               "levelCount": 5
             },
             {
-              "id": "S3",
-              "name": "Frozen Meals",
+              "id": "S2",
+              "name": "Premium & Exotic Fruits Bay",
               "floor": 0,
-              "row": 30,
-              "column": 5,
+              "row": 28,
+              "column": 4,
               "width": 8,
-              "depth": 6,
+              "depth": 9,
               "shelves": [
                 {
-                  "id": "S3-A",
-                  "name": "Pizza",
+                  "id": "S2-A",
+                  "name": "Imported & Exotic Fruits",
                   "levelCount": 5,
                   "closedSides": [
-                    "front",
-                    "back",
-                    "left"
+                    "right"
                   ]
                 },
                 {
-                  "id": "S3-B",
-                  "name": "Veggie",
-                  "levelCount": 5
+                  "id": "S2-B",
+                  "name": "Local & Everyday Fruits",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
                 }
               ],
-              "levelCount": 5,
-              "shelfSpacing": 3
+              "levelCount": 5
+            },
+            {
+              "id": "S1",
+              "name": "Seasonal Fruits Bay",
+              "floor": 0,
+              "row": 15,
+              "column": 4,
+              "width": 8,
+              "depth": 9,
+              "shelves": [
+                {
+                  "id": "S1-A",
+                  "name": "Seasonal Fruits",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
+                },
+                {
+                  "id": "S1-B",
+                  "name": "Value & Bulk Fruits",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 5
             }
           ]
         },
         {
-          "id": "Z1-A2",
-          "name": "Aisle 2",
+          "id": "Z0-A2",
+          "name": "Fresh Vegetables Aisle",
           "bays": [
             {
               "id": "S4",
-              "name": "Cereal & Breakfast",
+              "name": "Fresh Vegetables – Greens Bay",
               "floor": 0,
-              "row": 10,
-              "column": 18,
-              "width": 6,
-              "depth": 8,
+              "row": 39,
+              "column": 14,
+              "width": 8,
+              "depth": 10,
               "shelves": [
                 {
                   "id": "S4-A",
-                  "name": "Kids",
-                  "levelCount": 5
+                  "name": "Leafy Greens",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
                 },
                 {
                   "id": "S4-B",
-                  "name": "Healthy",
-                  "levelCount": 5
+                  "name": "Healthy Vegetables",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
                 }
               ],
               "levelCount": 5
             },
             {
               "id": "S5",
-              "name": "Pasta & Sauces",
+              "name": "Root & Daily Vegetables Bay",
               "floor": 0,
-              "row": 22,
-              "column": 18,
-              "width": 6,
-              "depth": 8,
+              "row": 27,
+              "column": 14,
+              "width": 8,
+              "depth": 10,
               "shelves": [
                 {
                   "id": "S5-A",
-                  "name": "Italian",
-                  "levelCount": 5
+                  "name": "Root & Daily Vegetables",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
                 },
                 {
                   "id": "S5-B",
-                  "name": "Asian",
-                  "levelCount": 5
+                  "name": "Exotic & Specialty Vegetables",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
                 }
               ],
               "levelCount": 5
             },
             {
               "id": "S6",
-              "name": "Canned Goods",
+              "name": "Packaged Vegetables Bay",
               "floor": 0,
-              "row": 34,
-              "column": 18,
-              "width": 6,
-              "depth": 8,
+              "row": 14,
+              "column": 14,
+              "width": 8,
+              "depth": 10,
               "shelves": [
                 {
                   "id": "S6-A",
-                  "name": "Soups",
-                  "levelCount": 5
+                  "name": "Packaged & Frozen Vegetables",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
                 },
                 {
                   "id": "S6-B",
-                  "name": "Vegetables",
-                  "levelCount": 5
+                  "name": "Ready-to-Cook Vegetables",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z1",
+      "name": "Dairy & Chilled Zone",
+      "aisles": [
+        {
+          "id": "Z1-A1",
+          "name": "Milk & Yogurt Aisle",
+          "bays": [
+            {
+              "id": "S7",
+              "name": "Milk & Yogurt Bay",
+              "floor": 0,
+              "row": 39,
+              "column": 28,
+              "width": 8,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "S7-A",
+                  "name": "Milk & Flavoured Milk",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
+                },
+                {
+                  "id": "S7-B",
+                  "name": "Yogurt & Curd",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
+        },
+        {
+          "id": "Z1-A2",
+          "name": "Butter & Cheese Aisle",
+          "bays": [
+            {
+              "id": "S8",
+              "name": "Butter & Cheese Bay",
+              "floor": 0,
+              "row": 27,
+              "column": 28,
+              "width": 8,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "S8-A",
+                  "name": "Butter & Cheese Blocks",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
+                },
+                {
+                  "id": "S8-B",
+                  "name": "Sliced & Spreadable Cheese",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
                 }
               ],
               "levelCount": 5
@@ -192,120 +283,32 @@
         },
         {
           "id": "Z1-A3",
-          "name": "Aisle 3",
+          "name": "Creams & Cultured Aisle",
           "bays": [
             {
-              "id": "S7",
-              "name": "Salty Snacks",
+              "id": "S3",
+              "name": "Creams & Cultured Products Bay",
               "floor": 0,
-              "row": 10,
-              "column": 30,
-              "width": 6,
-              "depth": 8,
-              "shelves": [
-                {
-                  "id": "S7-A",
-                  "name": "Chips",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S7-B",
-                  "name": "Popcorn",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            },
-            {
-              "id": "S8",
-              "name": "Soft Drinks",
-              "floor": 0,
-              "row": 22,
-              "column": 30,
-              "width": 6,
-              "depth": 8,
-              "shelves": [
-                {
-                  "id": "S8-A",
-                  "name": "Cola",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S8-B",
-                  "name": "Water",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            },
-            {
-              "id": "S9",
-              "name": "Confectionery",
-              "floor": 0,
-              "row": 34,
-              "column": 30,
-              "width": 6,
-              "depth": 8,
-              "shelves": [
-                {
-                  "id": "S9-A",
-                  "name": "Chocolate",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S9-B",
-                  "name": "Candy",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            }
-          ]
-        },
-        {
-          "id": "Z1-A4",
-          "name": "Aisle 4",
-          "bays": [
-            {
-              "id": "S10",
-              "name": "Bakery",
-              "floor": 0,
-              "row": 10,
-              "column": 42,
-              "width": 6,
+              "row": 14,
+              "column": 28,
+              "width": 8,
               "depth": 10,
               "shelves": [
                 {
-                  "id": "S10-A",
-                  "name": "Breads",
-                  "levelCount": 5
+                  "id": "S3-A",
+                  "name": "Creams & Whipping Products",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
                 },
                 {
-                  "id": "S10-B",
-                  "name": "Pastries",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            },
-            {
-              "id": "S11",
-              "name": "Fresh Fruit",
-              "floor": 0,
-              "row": 25,
-              "column": 42,
-              "width": 6,
-              "depth": 6,
-              "shelves": [
-                {
-                  "id": "S11-A",
-                  "name": "Tropical",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S11-B",
-                  "name": "Apples",
-                  "levelCount": 5
+                  "id": "S3-B",
+                  "name": "Cultured Dairy Products",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
                 }
               ],
               "levelCount": 5
@@ -316,146 +319,78 @@
     },
     {
       "id": "Z2",
-      "name": "Electronics & Home Zone",
+      "name": "Meat & Seafood Zone",
       "aisles": [
         {
           "id": "Z2-A1",
-          "name": "Aisle 1",
-          "bays": [
-            {
-              "id": "S12",
-              "name": "Computers",
-              "floor": 1,
-              "row": 10,
-              "column": 5,
-              "width": 12,
-              "depth": 4,
-              "shelves": [
-                {
-                  "id": "S12-A",
-                  "name": "Gaming Laptops",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S12-B",
-                  "name": "Business",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            },
-            {
-              "id": "S13",
-              "name": "Mobile Tech",
-              "floor": 1,
-              "row": 18,
-              "column": 5,
-              "width": 12,
-              "depth": 4,
-              "shelves": [
-                {
-                  "id": "S13-A",
-                  "name": "Smartphones",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S13-B",
-                  "name": "Tablets",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            },
-            {
-              "id": "S14",
-              "name": "TV & Audio",
-              "floor": 1,
-              "row": 30,
-              "column": 5,
-              "width": 12,
-              "depth": 8,
-              "shelves": [
-                {
-                  "id": "S14-A",
-                  "name": "OLED TVs",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S14-B",
-                  "name": "Soundbars",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            }
-          ]
+          "name": "Poultry & Beef Aisle",
+          "bays": []
         },
         {
           "id": "Z2-A2",
-          "name": "Aisle 2",
+          "name": "Fresh Seafood Aisle",
+          "bays": []
+        },
+        {
+          "id": "Z2-A3",
+          "name": "Pork & Fresh Cuts Aisle",
+          "bays": []
+        }
+      ]
+    },
+    {
+      "id": "Z3",
+      "name": "Bakery Zone",
+      "aisles": [
+        {
+          "id": "Z3-A1",
+          "name": "Breads Aisle",
+          "bays": []
+        },
+        {
+          "id": "Z3-A2",
+          "name": "Pastries Aisle",
+          "bays": []
+        },
+        {
+          "id": "Z3-A3",
+          "name": "Bagels & Rolls Aisle",
+          "bays": []
+        }
+      ]
+    },
+    {
+      "id": "Z4",
+      "name": "Pantry & Dry Grocery Zone",
+      "aisles": [
+        {
+          "id": "Z4-A1",
+          "name": "Grains & Staples Aisle",
           "bays": [
             {
-              "id": "S15",
-              "name": "Kitchenware",
-              "floor": 1,
-              "row": 10,
-              "column": 22,
+              "id": "B42",
+              "name": "Grains & Staples Bay",
+              "floor": 0,
+              "row": 15,
+              "column": 38,
               "width": 8,
-              "depth": 10,
+              "depth": 9,
               "shelves": [
                 {
-                  "id": "S15-A",
-                  "name": "Cookware",
-                  "levelCount": 5
+                  "id": "B42-A",
+                  "name": "Rice, Wheat & Pulses",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
                 },
                 {
-                  "id": "S15-B",
-                  "name": "Cutlery",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            },
-            {
-              "id": "S16",
-              "name": "Appliances",
-              "floor": 1,
-              "row": 25,
-              "column": 22,
-              "width": 8,
-              "depth": 10,
-              "shelves": [
-                {
-                  "id": "S16-A",
-                  "name": "Vacuums",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S16-B",
-                  "name": "Laundry",
-                  "levelCount": 5
-                }
-              ],
-              "levelCount": 5
-            },
-            {
-              "id": "S17",
-              "name": "Action Figures",
-              "floor": 1,
-              "row": 10,
-              "column": 35,
-              "width": 10,
-              "depth": 6,
-              "shelves": [
-                {
-                  "id": "S17-A",
-                  "name": "Collectibles",
-                  "levelCount": 5
-                },
-                {
-                  "id": "S17-B",
-                  "name": "Retro",
-                  "levelCount": 5
+                  "id": "B42-B",
+                  "name": "Flour & Baking Staples",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
                 }
               ],
               "levelCount": 5
@@ -463,52 +398,801 @@
           ]
         },
         {
-          "id": "Z2-A3",
-          "name": "Aisle 3",
+          "id": "Z4-A2",
+          "name": "Pasta & Sauces Aisle",
           "bays": [
             {
-              "id": "S18",
-              "name": "Board Games",
-              "floor": 1,
-              "row": 20,
-              "column": 35,
-              "width": 10,
-              "depth": 6,
+              "id": "B43",
+              "name": "Pasta & Sauces Bay",
+              "floor": 0,
+              "row": 28,
+              "column": 38,
+              "width": 8,
+              "depth": 9,
               "shelves": [
                 {
-                  "id": "S18-A",
-                  "name": "Strategy",
-                  "levelCount": 5
+                  "id": "B43-A",
+                  "name": "Pasta & International Sauces",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
                 },
                 {
-                  "id": "S18-B",
-                  "name": "Family",
-                  "levelCount": 5
+                  "id": "B43-B",
+                  "name": "Indian & Everyday Sauces",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
+        },
+        {
+          "id": "Z4-A3",
+          "name": "Oils & Baking Essentials Aisle",
+          "bays": [
+            {
+              "id": "PW-E4",
+              "name": "Cooking Oils Wall Bay",
+              "floor": 0,
+              "row": 34,
+              "column": 48,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-E4-A",
+                  "name": "Cooking Oils & Vinegars",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        },
+        {
+          "id": "Z4-A4",
+          "name": "Snacks & Breakfast Aisle",
+          "bays": [
+            {
+              "id": "PW-E1",
+              "name": "Beverages Wall Bay",
+              "floor": 0,
+              "row": 7,
+              "column": 48,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-E1-A",
+                  "name": "Packaged Juices",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-E5",
+              "name": "Coffee & Tea Wall Bay",
+              "floor": 0,
+              "row": 43,
+              "column": 48,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-E5-A",
+                  "name": "Coffee & Tea",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        },
+        {
+          "id": "Z4-A5",
+          "name": "Condiments & Sauces Aisle",
+          "bays": [
+            {
+              "id": "PW-E2",
+              "name": "Condiments Wall Bay",
+              "floor": 0,
+              "row": 16,
+              "column": 48,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-E2-A",
+                  "name": "Ketchup, Mayonnaise & Mustard",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-E3",
+              "name": "Spices & Seasonings Wall Bay",
+              "floor": 0,
+              "row": 25,
+              "column": 48,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-E3-A",
+                  "name": "Cooking Spices",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                },
+                {
+                  "id": "PW-E3-B",
+                  "name": "Baking Essentials & Extracts",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        },
+        {
+          "id": "Z4-A6",
+          "name": "Canned & Packaged Foods Aisle",
+          "bays": [
+            {
+              "id": "B44",
+              "name": "Canned & Packaged Foods Bay",
+              "floor": 0,
+              "row": 40,
+              "column": 38,
+              "width": 8,
+              "depth": 9,
+              "shelves": [
+                {
+                  "id": "B44-A",
+                  "name": "Canned Vegetables & Beans",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right"
+                  ]
+                },
+                {
+                  "id": "B44-B",
+                  "name": "Ready Meals & Packaged Foods",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z5",
+      "name": "Frozen & Ready Foods Zone",
+      "aisles": [
+        {
+          "id": "Z5-A1",
+          "name": "Frozen Meals Aisle",
+          "bays": [
+            {
+              "id": "PW-W3",
+              "name": "Frozen Dairy Alternatives Bay",
+              "floor": 0,
+              "row": 25,
+              "column": 0,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-W3-B",
+                  "name": "Dairy-Free & Vegan Products",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        },
+        {
+          "id": "Z5-A2",
+          "name": "Ice Cream & Desserts Aisle",
+          "bays": [
+            {
+              "id": "PW-W2",
+              "name": "Ice Cream & Desserts Wall Bay",
+              "floor": 0,
+              "row": 16,
+              "column": 0,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-W2-B",
+                  "name": "Ice Cream & Desserts",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        },
+        {
+          "id": "Z5-A3",
+          "name": "Frozen Snacks Aisle",
+          "bays": [
+            {
+              "id": "PW-W1",
+              "name": "Frozen Vegetables Wall Bay",
+              "floor": 0,
+              "row": 7,
+              "column": 0,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-W1-B",
+                  "name": "Frozen Vegetables",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-W4",
+              "name": "Baby & Infant Frozen Foods Bay",
+              "floor": 0,
+              "row": 34,
+              "column": 0,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-W4-B",
+                  "name": "Baby Food & Nutrition",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-W5",
+              "name": "Organic & Health Frozen Bay",
+              "floor": 0,
+              "row": 43,
+              "column": 0,
+              "width": 2,
+              "depth": 8,
+              "shelves": [
+                {
+                  "id": "PW-W5-B",
+                  "name": "Organic & Health Foods",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z6",
+      "name": "Computing & Laptops Zone",
+      "aisles": [
+        {
+          "id": "Z6-A1",
+          "name": "Laptops & Desktops Aisle",
+          "bays": [
+            {
+              "id": "S12",
+              "name": "Laptops & Desktops Bay",
+              "floor": 1,
+              "row": 15,
+              "column": 8,
+              "width": 35,
+              "depth": 5,
+              "shelves": [
+                {
+                  "id": "S12-B",
+                  "name": "Business & Productivity Laptops",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "front",
+                    "right"
+                  ]
+                },
+                {
+                  "id": "S12-C",
+                  "name": "Student & Home Laptops",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "front",
+                    "left"
+                  ]
                 }
               ],
               "levelCount": 5
             },
             {
-              "id": "S19",
-              "name": "Video Games",
+              "id": "B37",
+              "name": "Desktop PCs & Monitors Bay",
               "floor": 1,
-              "row": 30,
-              "column": 35,
-              "width": 10,
-              "depth": 6,
+              "row": 21,
+              "column": 8,
+              "width": 35,
+              "depth": 5,
               "shelves": [
                 {
-                  "id": "S19-A",
-                  "name": "PS5",
-                  "levelCount": 5
+                  "id": "B37-A",
+                  "name": "Desktop PCs",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right",
+                    "back"
+                  ]
                 },
                 {
-                  "id": "S19-B",
-                  "name": "Switch",
-                  "levelCount": 5
+                  "id": "B37-B",
+                  "name": "Computer Monitors",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "back",
+                    "left"
+                  ]
                 }
               ],
               "levelCount": 5
+            }
+          ]
+        },
+        {
+          "id": "Z6-A2",
+          "name": "Monitors & Peripherals Aisle",
+          "bays": [
+            {
+              "id": "PW-F1-E3",
+              "name": "Computer Peripherals Wall",
+              "floor": 1,
+              "row": 26,
+              "column": 46,
+              "width": 4,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "PW-F1-E3-B",
+                  "name": "Computer Monitors",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-F1-E4",
+              "name": "Printers, Ink & Office Tech Wall",
+              "floor": 1,
+              "row": 37,
+              "column": 46,
+              "width": 4,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "PW-F1-E4-B",
+                  "name": "Printer Ink & Toners",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z7",
+      "name": "Mobile Phones & Wearables Zone",
+      "aisles": [
+        {
+          "id": "Z7-A1",
+          "name": "Smartphones Aisle",
+          "bays": [
+            {
+              "id": "B38",
+              "name": "Smartphones & Wearables Bay",
+              "floor": 1,
+              "row": 39,
+              "column": 8,
+              "width": 35,
+              "depth": 5,
+              "shelves": [
+                {
+                  "id": "B38-A",
+                  "name": "Smartphones",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right",
+                    "back"
+                  ]
+                },
+                {
+                  "id": "B38-B",
+                  "name": "Smartwatches & Wearables",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "back",
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
+        },
+        {
+          "id": "Z7-A2",
+          "name": "Wearables & Accessories Aisle",
+          "bays": [
+            {
+              "id": "PW-F1-S6",
+              "name": "Mobile Accessories Wall",
+              "floor": 1,
+              "row": 50,
+              "column": 39,
+              "width": 10,
+              "depth": 4,
+              "shelves": [
+                {
+                  "id": "PW-F1-S6-A",
+                  "name": "Mobile Cases & Covers",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "front"
+                  ]
+                },
+                {
+                  "id": "PW-F1-S6-B",
+                  "name": "Chargers & Power Banks",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "front"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z8",
+      "name": "Audio, TV & Entertainment Zone",
+      "aisles": [
+        {
+          "id": "Z8-A1",
+          "name": "Televisions Aisle",
+          "bays": []
+        },
+        {
+          "id": "Z8-A2",
+          "name": "Audio Systems & Headphones Aisle",
+          "bays": [
+            {
+              "id": "S14",
+              "name": "Audio Systems & TVs Bay",
+              "floor": 1,
+              "row": 32,
+              "column": 8,
+              "width": 35,
+              "depth": 6,
+              "shelves": [
+                {
+                  "id": "S14-A",
+                  "name": "Televisions & Displays",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "right",
+                    "front"
+                  ]
+                },
+                {
+                  "id": "S14-B",
+                  "name": "Soundbars & Home Audio",
+                  "levelCount": 5,
+                  "closedSides": [
+                    "front",
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z9",
+      "name": "Smart Home & Networking Zone",
+      "aisles": [
+        {
+          "id": "Z9-A1",
+          "name": "Smart Home Devices Aisle",
+          "bays": [
+            {
+              "id": "PW-F1-E1",
+              "name": "Smart Home Devices Wall",
+              "floor": 1,
+              "row": 4,
+              "column": 46,
+              "width": 4,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "PW-F1-E1-B",
+                  "name": "Smart Home & Automation Devices",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        },
+        {
+          "id": "Z9-A2",
+          "name": "Networking Equipment Aisle",
+          "bays": [
+            {
+              "id": "PW-F1-E2",
+              "name": "Cables, Adapters & Hubs Wall",
+              "floor": 1,
+              "row": 15,
+              "column": 46,
+              "width": 4,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "PW-F1-E2-A",
+                  "name": "USB, HDMI & Power Cables",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "right"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z10",
+      "name": "Gaming, Toys & Accessories Zone",
+      "aisles": [
+        {
+          "id": "Z10-A1",
+          "name": "Gaming Consoles Aisle",
+          "bays": [
+            {
+              "id": "PW-F1-S5",
+              "name": "Gaming Controllers & Gear Wall",
+              "floor": 1,
+              "row": 50,
+              "column": 27,
+              "width": 10,
+              "depth": 4,
+              "shelves": [
+                {
+                  "id": "PW-F1-S5-A",
+                  "name": "Game Controllers",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "front"
+                  ]
+                },
+                {
+                  "id": "PW-F1-S5-B",
+                  "name": "Gaming Headsets & Gear",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "front"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            }
+          ]
+        },
+        {
+          "id": "Z10-A2",
+          "name": "Gaming Accessories & Toys Aisle",
+          "bays": [
+            {
+              "id": "PW-F1-S1",
+              "name": "Office & Computer Accessories Wall",
+              "floor": 1,
+              "row": 50,
+              "column": 1,
+              "width": 11,
+              "depth": 4,
+              "shelves": [
+                {
+                  "id": "PW-F1-S1-A",
+                  "name": "Keyboards, Mouse & Stationery",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "front"
+                  ]
+                },
+                {
+                  "id": "PW-F1-S1-B",
+                  "name": "Office Accessories",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "front"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-F1-S2",
+              "name": "Creative & Design Accessories Wall",
+              "floor": 1,
+              "row": 50,
+              "column": 14,
+              "width": 11,
+              "depth": 4,
+              "shelves": [
+                {
+                  "id": "PW-F1-S2-A",
+                  "name": "Graphic Tablets & Art Tools",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "front"
+                  ]
+                },
+                {
+                  "id": "PW-F1-S2-B",
+                  "name": "Craft & DIY Accessories",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "front"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-F1-W2",
+              "name": "STEM & Logic Games Wall",
+              "floor": 1,
+              "row": 4,
+              "column": 0,
+              "width": 4,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "PW-F1-W2-B",
+                  "name": "STEM Toys & Brain Games",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-F1-W3",
+              "name": "Educational Toys Wall",
+              "floor": 1,
+              "row": 15,
+              "column": 0,
+              "width": 4,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "PW-F1-W3-B",
+                  "name": "Educational & Learning Games",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-F1-W4",
+              "name": "Outdoor & RC Toys Wall",
+              "floor": 1,
+              "row": 26,
+              "column": 0,
+              "width": 4,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "PW-F1-W4-B",
+                  "name": "Outdoor & Remote-Control Toys",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
+            },
+            {
+              "id": "PW-F1-W5",
+              "name": "Collectibles & Merchandise Wall",
+              "floor": 1,
+              "row": 37,
+              "column": 0,
+              "width": 4,
+              "depth": 10,
+              "shelves": [
+                {
+                  "id": "PW-F1-W5-B",
+                  "name": "Collectibles & Merchandise",
+                  "levelCount": 4,
+                  "closedSides": [
+                    "left"
+                  ]
+                }
+              ],
+              "levelCount": 4
             }
           ]
         }

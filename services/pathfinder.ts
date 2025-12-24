@@ -11,57 +11,278 @@ interface GridNode {
   parent: GridNode | null;
 }
 
-// Simplify path by removing unnecessary waypoints (makes paths smoother through departments)
-const simplifyPath = (path: PathNode[]): PathNode[] => {
+// Inflate obstacles in a region by marking neighbors within a radius as blocked
+const inflateObstaclesInRegion = (grid: boolean[][], minX: number, minZ: number, maxX: number, maxZ: number, radius: number = 1) => {
+  const width = grid.length;
+  const depth = width > 0 ? grid[0].length : 0;
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const sx = clamp(Math.floor(minX), 0, width - 1);
+  const ex = clamp(Math.ceil(maxX), 0, width - 1);
+  const sz = clamp(Math.floor(minZ), 0, depth - 1);
+  const ez = clamp(Math.ceil(maxZ), 0, depth - 1);
+  // Snapshot original region to avoid cascading inflation in a single pass
+  const original: boolean[][] = [];
+  for (let x = sx; x <= ex; x++) {
+    original[x - sx] = [];
+    for (let z = sz; z <= ez; z++) original[x - sx][z - sz] = grid[x][z];
+  }
+  for (let x = sx; x <= ex; x++) {
+    for (let z = sz; z <= ez; z++) {
+      if (!original[x - sx][z - sz]) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const nx = x + dx, nz = z + dz;
+            if (nx >= 0 && nx < width && nz >= 0 && nz < depth) grid[nx][nz] = false;
+          }
+        }
+      }
+    }
+  }
+};
+
+// Calculate distance from point to nearest obstacle
+const getObstacleDistance = (grid: boolean[][], x: number, z: number, maxDist: number): number => {
+  const width = grid.length;
+  const depth = grid[0].length;
+  
+  for (let d = 1; d <= maxDist; d++) {
+    // Check in a square pattern around the point
+    for (let dx = -d; dx <= d; dx++) {
+      for (let dz = -d; dz <= d; dz++) {
+        const nx = Math.floor(x) + dx;
+        const nz = Math.floor(z) + dz;
+        
+        if (nx >= 0 && nx < width && nz >= 0 && nz < depth && !grid[nx][nz]) {
+          return d; // Return distance to nearest obstacle
+        }
+      }
+    }
+  }
+  return maxDist; // No obstacle found within maxDist
+};
+
+// Calculate centerline bias for a point in the aisle
+const getCenterlineBias = (x: number, z: number, grid: boolean[][], width: number, depth: number): number => {
+  // Find nearest walls in all four directions
+  let leftDist = 0, rightDist = 0, upDist = 0, downDist = 0;
+  
+  // Check left
+  for (let i = Math.floor(x); i >= 0; i--) {
+    if (!grid[i][Math.floor(z)]) {
+      leftDist = x - i;
+      break;
+    }
+  }
+  
+  // Check right
+  for (let i = Math.ceil(x); i < width; i++) {
+    if (!grid[i][Math.floor(z)]) {
+      rightDist = i - x;
+      break;
+    }
+  }
+  
+  // Check up
+  for (let j = Math.floor(z); j >= 0; j--) {
+    if (!grid[Math.floor(x)][j]) {
+      upDist = z - j;
+      break;
+    }
+  }
+  
+  // Check down
+  for (let j = Math.ceil(z); j < depth; j++) {
+    if (!grid[Math.floor(x)][j]) {
+      downDist = j - z;
+      break;
+    }
+  }
+  
+  // Calculate how centered we are in the aisle
+  const horizontalBias = 1 - Math.abs((rightDist - leftDist) / (rightDist + leftDist || 1));
+  const verticalBias = 1 - Math.abs((downDist - upDist) / (downDist + upDist || 1));
+  
+  // Return a score from 0 to 1, where 1 is perfectly centered
+  return (horizontalBias + verticalBias) / 2;
+};
+
+// Check a grid cell and its neighbors within a given clearance are walkable
+const isCellClear = (grid: boolean[][], cx: number, cz: number, clearance: number = 1): boolean => {
+  const width = grid.length;
+  const depth = width > 0 ? grid[0].length : 0;
+  for (let dx = -clearance; dx <= clearance; dx++) {
+    for (let dz = -clearance; dz <= clearance; dz++) {
+      const x = cx + dx;
+      const z = cz + dz;
+      if (x < 0 || x >= width || z < 0 || z >= depth) return false;
+      if (!grid[x][z]) return false;
+    }
+  }
+  return true;
+};
+
+// Clearance check for a floating point position
+const isPointClear = (grid: boolean[][], x: number, z: number, clearance: number = 1): boolean => {
+  return isCellClear(grid, Math.floor(x), Math.floor(z), clearance);
+};
+
+// Segment collision test with clearance using dense sampling
+const isCollisionFree = (p1: PathNode, p2: PathNode, grid: boolean[][], clearance: number = 1): boolean => {
+  const dx = p2.x - p1.x;
+  const dz = p2.z - p1.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  const steps = Math.max(1, Math.ceil(dist / 0.25));
+
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const x = p1.x + t * dx;
+    const z = p1.z + t * dz;
+    if (!isPointClear(grid, x, z, clearance)) return false;
+  }
+  return true;
+};
+
+const smoothPath = (path: PathNode[], grid: boolean[][], iterations: number = 60, tolerance: number = 0.12): PathNode[] => {
   if (path.length <= 2) return path;
-  
-  const simplified: PathNode[] = [path[0]]; // Always keep start
-  
+
+  let smoothedPath = [...path];
+
+  for (let i = 0; i < iterations; i++) {
+    for (let j = 1; j < smoothedPath.length - 2; j++) {
+      const prev = smoothedPath[j - 1];
+      const curr = smoothedPath[j];
+      const next = smoothedPath[j + 1];
+
+      const targetX = (prev.x + next.x) / 2;
+      const targetZ = (prev.z + next.z) / 2;
+
+      const dx = targetX - curr.x;
+      const dz = targetZ - curr.z;
+
+      const newX = curr.x + dx * tolerance;
+      const newZ = curr.z + dz * tolerance;
+
+      const newPoint = { ...curr, x: newX, z: newZ };
+
+      if (isCollisionFree(prev, newPoint, grid, 2) && isCollisionFree(newPoint, next, grid, 2)) {
+        smoothedPath[j] = newPoint;
+      }
+    }
+  }
+
+  return smoothedPath;
+}
+
+// Remove intermediate points when a direct line is collision-free with clearance
+const shortcutPath = (path: PathNode[], grid: boolean[][], clearance: number = 1): PathNode[] => {
+  if (path.length <= 2) return path;
+  const result: PathNode[] = [path[0]];
+  let i = 0;
+  while (i < path.length - 1) {
+    let k = path.length - 1;
+    // Find the farthest point reachable in a straight line
+    for (; k > i + 1; k--) {
+      if (isCollisionFree(path[i], path[k], grid, clearance)) break;
+    }
+    result.push(path[k]);
+    i = k;
+  }
+  return result;
+}
+
+// Raycast from a point in a direction until hitting a blocked cell; returns distance in world units
+const rayDistanceToObstacle = (grid: boolean[][], x: number, z: number, dirX: number, dirZ: number, maxDist: number = 6, step: number = 0.1): number => {
+  let dist = 0;
+  const len = Math.hypot(dirX, dirZ) || 1;
+  const ux = dirX / len, uz = dirZ / len;
+  while (dist <= maxDist) {
+    const px = x + ux * dist;
+    const pz = z + uz * dist;
+    if (px < 0 || pz < 0 || px >= grid.length || pz >= (grid[0]?.length || 0)) return dist;
+    const cx = Math.floor(px), cz = Math.floor(pz);
+    if (!grid[cx]?.[cz]) return Math.max(0, dist - step); // back off a bit to stay inside free space
+    dist += step;
+  }
+  return maxDist;
+};
+
+// Move intermediate points toward the medial axis of the local aisle using perpendicular sampling
+const centerPathInAisles = (path: PathNode[], grid: boolean[][]): PathNode[] => {
+  if (path.length <= 2) return path;
+  const centered: PathNode[] = [...path];
+  for (let i = 1; i < centered.length - 2; i++) {
+    const prev = centered[i - 1];
+    const curr = centered[i];
+    const next = centered[i + 1];
+    const vx = next.x - prev.x;
+    const vz = next.z - prev.z;
+    const vlen = Math.hypot(vx, vz);
+    if (vlen < 1e-3) continue;
+    const px = -vz / vlen;
+    const pz =  vx / vlen;
+
+    const left = rayDistanceToObstacle(grid, curr.x, curr.z, -px, -pz, 6, 0.1);
+    const right = rayDistanceToObstacle(grid, curr.x, curr.z,  px,  pz, 6, 0.1);
+
+    // Target the midpoint between left and right free distances
+    let offset = (right - left) / 2;
+    // Limit how far we shift in one step to avoid oscillations
+    offset = Math.max(-1.5, Math.min(1.5, offset));
+
+    const cx = curr.x + px * offset;
+    const cz = curr.z + pz * offset;
+    // Only accept if the new location and adjacent segments remain collision-free with clearance
+    const candidate = { ...curr, x: cx, z: cz };
+    if (
+      cx >= 0 && cz >= 0 && cx < grid.length && cz < (grid[0]?.length || 0) &&
+      isCollisionFree(prev, candidate, grid, 2) &&
+      isCollisionFree(candidate, next, grid, 2)
+    ) {
+      centered[i] = candidate;
+    }
+  }
+  return centered;
+};
+
+const simplifyPath = (path: PathNode[], grid: boolean[][]): PathNode[] => {
+  if (path.length <= 2) return path;
+
+  let simplified: PathNode[] = [path[0]];
   for (let i = 1; i < path.length - 1; i++) {
-    const prev = simplified[simplified.length - 1]; // Last point in simplified path
+    const prev = simplified[simplified.length - 1];
     const curr = path[i];
     const next = path[i + 1];
-    
-    // Calculate direction vectors
     const dx1 = curr.x - prev.x;
     const dz1 = curr.z - prev.z;
     const dx2 = next.x - curr.x;
     const dz2 = next.z - curr.z;
-    
-    // Normalize vectors for comparison
     const len1 = Math.sqrt(dx1 * dx1 + dz1 * dz1);
     const len2 = Math.sqrt(dx2 * dx2 + dz2 * dz2);
-    
-    if (len1 < 0.01 || len2 < 0.01) {
-      // Very short segments, keep the point
-      simplified.push(curr);
-      continue;
+    if (len1 > 0.1 && len2 > 0.1) {
+      const dotProduct = (dx1 * dx2 + dz1 * dz2) / (len1 * len2);
+      if (dotProduct < 0.95) {
+        simplified.push(curr);
+      }
     }
-    
-    // Normalized direction vectors
-    const dir1x = dx1 / len1;
-    const dir1z = dz1 / len1;
-    const dir2x = dx2 / len2;
-    const dir2z = dz2 / len2;
-    
-    // Check if directions are similar (dot product close to 1 means same direction)
-    const dotProduct = dir1x * dir2x + dir1z * dir2z;
-    const angleThreshold = 0.95; // ~18 degrees tolerance
-    
-    // If direction changes significantly, keep this point
-    if (dotProduct < angleThreshold) {
-      simplified.push(curr);
-    }
-    // Otherwise, skip this point (it's collinear/unnecessary)
   }
-  
-  simplified.push(path[path.length - 1]); // Always keep end
-  return simplified;
-}
+  simplified.push(path[path.length - 1]);
+
+  // Shortcut first to remove unnecessary intermediate nodes
+  let shortened = shortcutPath(simplified, grid, 1);
+  // Then smooth and center
+  let smoothed = smoothPath(shortened, grid);
+  smoothed = centerPathInAisles(smoothed, grid);
+  // Final shortcut to ensure minimal, clean segments with clearance
+  const finalPath = shortcutPath(smoothed, grid, 1);
+  return finalPath;
+};
 
 const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: PathNode): PathNode[] => {
   const { width, depth } = config.gridSize;
-  const grid: boolean[][] = Array.from({ length: width }, () => new Array(depth).fill(true));
+  // Initialize grid with all cells walkable (true)
+  const grid: boolean[][] = Array.from({ length: Math.ceil(width) }, () => 
+    new Array(Math.ceil(depth)).fill(true)
+  );
 
   const allBays = getAllBays(config);
   const targetBay = allBays.find(bay =>
@@ -78,12 +299,9 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
     const availableWidth = bay.width - totalSpacing;
     const unitWidth = numShelves > 0 ? availableWidth / numShelves : bay.width;
-    
-    // Minimum spacing required to walk through (0.8 units = ~80cm, reasonable for walking)
-    const minWalkableSpacing = 0.8;
-    const canWalkThroughGaps = shelfSpacing >= minWalkableSpacing && numShelves > 1;
 
     // Block individual shelves (not the entire bay) to allow paths through gaps
+    // Removed space checking - paths will always be generated even through narrow spaces
     bay.shelves.forEach((shelf, idx) => {
       const closedSides = shelf.closedSides ?? [];
       
@@ -101,21 +319,28 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       // Block the shelf itself (the physical shelf unit) - STRICTLY block interior
       // Block everything from backFaceZ to frontFaceZ (the shelf interior)
       // Endpoint will be safely away (0.8 units) from the shelf face
-      const buffer = 0.1; // Small buffer around shelf
+      const buffer = 0.5; // Increased buffer to create a safety margin
       const safeDistance = 0.8; // Safe distance from shelf face (matches App.tsx)
+      
+      // Check if this is the target shelf (the one we're navigating to)
+      const isTargetShelf = targetBay && 
+        shelfCenterX >= targetBay.column && shelfCenterX <= targetBay.column + targetBay.width &&
+        shelfCenterZ >= targetBay.row && shelfCenterZ <= targetBay.row + targetBay.depth;
       
       for (let x = Math.floor(shelfLeftX - buffer); x <= Math.floor(shelfRightX + buffer); x++) {
         // Block entire shelf depth (from backFaceZ to frontFaceZ)
         for (let z = Math.floor(backFaceZ - buffer); z <= Math.floor(frontFaceZ + buffer); z++) {
           if (x < 0 || x >= width || z < 0 || z >= depth) continue;
 
-          // Skip blocking if this node is near the endpoint (for endpoint connectivity)
-          const nodeX = x + 0.5, nodeZ = z + 0.5;
-          const distToEnd = Math.sqrt((nodeX - end.x) ** 2 + (nodeZ - end.z) ** 2);
-          
-          // Allow endpoint area - endpoint is at safeDistance (0.8) from shelf face
-          // Check if this node is near the endpoint (within 1.0 units)
-          if (distToEnd < 1.0) {
+          // Only allow endpoint area override for the target shelf, not other shelves
+          // This ensures paths don't go through other shelves
+          if (isTargetShelf) {
+            const nodeX = x + 0.5, nodeZ = z + 0.5;
+            const distToEnd = Math.sqrt((nodeX - end.x) ** 2 + (nodeZ - end.z) ** 2);
+            
+            // Allow endpoint area - endpoint is at safeDistance (0.8) from shelf face
+            // Check if this node is near the endpoint (within 1.0 units)
+            if (distToEnd < 1.0) {
             // Check if this node is in the endpoint area (outside shelf, at safe distance)
             const isInFrontAisle = nodeZ >= frontFaceZ + safeDistance - 0.3 && nodeZ <= frontFaceZ + safeDistance + 0.3;
             const isInBackAisle = nodeZ <= backFaceZ - safeDistance + 0.3 && nodeZ >= backFaceZ - safeDistance - 0.3;
@@ -125,61 +350,62 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
             // Allow if it's in the endpoint area (aisle space, not shelf interior)
             if ((isInFrontAisle || isInBackAisle || isInRightAisle || isInLeftAisle) && 
                 (nodeZ < backFaceZ || nodeZ > frontFaceZ || nodeX < shelfLeftX || nodeX > shelfRightX)) {
-              continue; // Allow endpoint area
+              continue; // Allow endpoint area only for target shelf
             }
           }
+          }
 
-          grid[x][z] = false; // Block shelf interior
+          grid[x][z] = false; // Block shelf interior - always block non-target shelves
         }
       }
       
       // Keep gaps between shelves accessible (if spacing exists)
       // Gaps are naturally accessible since we only block individual shelves above
 
-      // Block front face area if front is closed - NEVER allow paths through closed faces
-      if (closedSides.includes('front')) {
-        // Block area in front of the closed front face (from front face outward)
-        // Block a wider area to prevent paths from getting too close
-        for (let x = Math.floor(shelfLeftX - 0.5); x <= Math.floor(shelfRightX + 0.5); x++) {
-          for (let z = Math.floor(frontFaceZ); z <= Math.floor(frontFaceZ + 2.5); z++) {
-            if (x < 0 || x >= width || z < 0 || z >= depth) continue;
-            // Always block closed faces - no exemption near target
-            grid[x][z] = false;
+      // Reduced blocking for closed faces - allow paths through narrow spaces
+      // Only block immediate area around closed faces, not extended blocking zones
+      // Skip closed face blocking for target shelf - endpoint area will handle it
+      if (!isTargetShelf) {
+        if (closedSides.includes('front')) {
+          // Only block minimal area in front of closed front face
+          for (let x = Math.floor(shelfLeftX - 0.3); x <= Math.floor(shelfRightX + 0.3); x++) {
+            for (let z = Math.floor(frontFaceZ); z <= Math.floor(frontFaceZ + 0.5); z++) {
+              if (x < 0 || x >= width || z < 0 || z >= depth) continue;
+              grid[x][z] = false;
+            }
           }
         }
-      }
 
-      // Block back face area if back is closed - NEVER allow paths through closed faces
-      const isBackClosed = closedSides === undefined || closedSides.length === 0 || closedSides.includes('back');
-      if (isBackClosed) {
-        // Block area behind the closed back face (from back face outward)
-        // Block a wider area to prevent paths from getting too close
-        for (let x = Math.floor(shelfLeftX - 0.5); x <= Math.floor(shelfRightX + 0.5); x++) {
-          for (let z = Math.floor(backFaceZ - 2.5); z <= Math.floor(backFaceZ); z++) {
-            if (x < 0 || x >= width || z < 0 || z >= depth) continue;
-            // Always block closed faces - no exemption near target
-            grid[x][z] = false;
+        // Block back face area if back is closed - reduced blocking
+        const isBackClosed = closedSides === undefined || closedSides.length === 0 || closedSides.includes('back');
+        if (isBackClosed) {
+          // Only block minimal area behind closed back face
+          for (let x = Math.floor(shelfLeftX - 0.3); x <= Math.floor(shelfRightX + 0.3); x++) {
+            for (let z = Math.floor(backFaceZ - 0.5); z <= Math.floor(backFaceZ); z++) {
+              if (x < 0 || x >= width || z < 0 || z >= depth) continue;
+              grid[x][z] = false;
+            }
           }
         }
-      }
-      
-      // Block left/right face areas if they are closed
-      if (closedSides.includes('left')) {
-        // Block area to the left of the closed left face
-        for (let x = Math.floor(shelfLeftX - 2.5); x <= Math.floor(shelfLeftX); x++) {
-          for (let z = Math.floor(backFaceZ - 0.5); z <= Math.floor(frontFaceZ + 0.5); z++) {
-            if (x < 0 || x >= width || z < 0 || z >= depth) continue;
-            grid[x][z] = false;
+        
+        // Block left/right face areas if they are closed - reduced blocking
+        if (closedSides.includes('left')) {
+          // Only block minimal area to the left of closed left face
+          for (let x = Math.floor(shelfLeftX - 0.5); x <= Math.floor(shelfLeftX); x++) {
+            for (let z = Math.floor(backFaceZ - 0.3); z <= Math.floor(frontFaceZ + 0.3); z++) {
+              if (x < 0 || x >= width || z < 0 || z >= depth) continue;
+              grid[x][z] = false;
+            }
           }
         }
-      }
-      
-      if (closedSides.includes('right')) {
-        // Block area to the right of the closed right face
-        for (let x = Math.floor(shelfRightX); x <= Math.floor(shelfRightX + 2.5); x++) {
-          for (let z = Math.floor(backFaceZ - 0.5); z <= Math.floor(frontFaceZ + 0.5); z++) {
-            if (x < 0 || x >= width || z < 0 || z >= depth) continue;
-            grid[x][z] = false;
+        
+        if (closedSides.includes('right')) {
+          // Only block minimal area to the right of closed right face
+          for (let x = Math.floor(shelfRightX); x <= Math.floor(shelfRightX + 0.5); x++) {
+            for (let z = Math.floor(backFaceZ - 0.3); z <= Math.floor(frontFaceZ + 0.3); z++) {
+              if (x < 0 || x >= width || z < 0 || z >= depth) continue;
+              grid[x][z] = false;
+            }
           }
         }
       }
@@ -188,7 +414,7 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     // Ensure aisle areas around bay remain accessible for better path routing
     // Aisles are the areas in front/behind the bay (outside shelf blocking zones)
     // These should remain open for natural path routing
-    const aisleBuffer = 1.0; // Aisle width around bay
+    const aisleBuffer = 2.0; // Increased aisle width around bay for better pathfinding
     
     // Front aisle (in front of bay)
     for (let x = Math.floor(bay.column - aisleBuffer); x <= Math.floor(bay.column + bay.width + aisleBuffer); x++) {
@@ -207,41 +433,61 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
         }
       }
     }
+    
+    // Side aisles (left and right of bay) - ensure paths can navigate around bays
+    for (let z = Math.floor(bay.row - aisleBuffer); z <= Math.floor(bay.row + bay.depth + aisleBuffer); z++) {
+      // Left side aisle
+      for (let x = Math.floor(bay.column - aisleBuffer); x <= Math.floor(bay.column - 0.5); x++) {
+        if (x >= 0 && x < width && z >= 0 && z < depth) {
+          grid[x][z] = true; // Ensure left aisle is accessible
+        }
+      }
+      // Right side aisle
+      for (let x = Math.floor(bay.column + bay.width + 0.5); x <= Math.floor(bay.column + bay.width + aisleBuffer); x++) {
+        if (x >= 0 && x < width && z >= 0 && z < depth) {
+          grid[x][z] = true; // Ensure right aisle is accessible
+        }
+      }
+    }
   });
 
   // Ensure endpoint cell and nearby cells are always accessible
-  // This ensures the path can reach the destination point safely
+  // This ensures the path can reach the destination point safely, even through narrow spaces
+  // IMPORTANT: This must happen AFTER all blocking to override everything
   const endX = Math.min(width - 1, Math.max(0, Math.floor(end.x)));
   const endZ = Math.min(depth - 1, Math.max(0, Math.floor(end.z)));
   
-  // Ensure endpoint and adjacent cells are accessible for path connectivity
-  // Use a larger area (3x3) to ensure connectivity and account for safe distance
-  // This creates a clear access zone around the endpoint
+  // Ensure a small area around the endpoint is accessible to avoid dead-ends (7x7)
   for (let dx = -3; dx <= 3; dx++) {
     for (let dz = -3; dz <= 3; dz++) {
       const nx = endX + dx;
       const nz = endZ + dz;
       if (nx >= 0 && nx < width && nz >= 0 && nz < depth) {
-        // Only force accessibility if it's not already blocked by a closed face
-        // Check if this cell is in a blocked area (we'll allow it if it's near endpoint)
-        const nodeX = nx + 0.5;
-        const nodeZ = nz + 0.5;
-        const distToEnd = Math.sqrt((nodeX - end.x) ** 2 + (nodeZ - end.z) ** 2);
-        
-        // Force accessibility within 1.5 units of endpoint (safe walking area)
-        if (distToEnd < 1.5) {
-          grid[nx][nz] = true; // Force endpoint area to be accessible
-        }
+        grid[nx][nz] = true;
+      }
+    }
+  }
+
+  // Ensure start point (entrance) is always accessible
+  const startX = Math.min(width - 1, Math.max(0, Math.floor(start.x)));
+  const startZ = Math.min(depth - 1, Math.max(0, Math.floor(start.z)));
+  
+  // Force start point and nearby cells to be accessible
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dz = -3; dz <= 3; dz++) {
+      const nx = startX + dx;
+      const nz = startZ + dz;
+      if (nx >= 0 && nx < width && nz >= 0 && nz < depth) {
+        grid[nx][nz] = true; // Force start area to be accessible
       }
     }
   }
 
   const openList: GridNode[] = [];
   const closedList: Set<string> = new Set();
-  const startX = Math.min(width - 1, Math.max(0, Math.floor(start.x)));
-  const startZ = Math.min(depth - 1, Math.max(0, Math.floor(start.z)));
 
-  openList.push({ x: startX, z: startZ, g: 0, h: Math.abs(startX - endX) + Math.abs(startZ - endZ), f: 0, parent: null });
+  const startH = Math.hypot(startX - endX, startZ - endZ);
+  openList.push({ x: startX, z: startZ, g: 0, h: startH, f: startH, parent: null });
 
   while (openList.length > 0) {
     let currentIndex = 0;
@@ -259,7 +505,7 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       // Smooth the path by removing unnecessary waypoints (path simplification)
       // This makes paths through departments look more natural
       if (finalPath.length > 2) {
-        finalPath = simplifyPath(finalPath);
+        finalPath = simplifyPath(finalPath, grid);
       }
       
       // Ensure endpoint matches exactly (for accuracy)
@@ -279,8 +525,31 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     for (const dir of directions) {
       const nx = current.x + dir.x, nz = current.z + dir.z;
       if (nx < 0 || nx >= width || nz < 0 || nz >= depth || closedList.has(`${nx},${nz}`) || !grid[nx][nz]) continue;
-      const g = current.g + ((dir.x !== 0 && dir.z !== 0) ? 1.4 : 1);
-      const h = Math.abs(nx - endX) + Math.abs(nz - endZ);
+
+      // Prevent diagonal corner cutting (both adjacent orthogonals must be free)
+      if (dir.x !== 0 && dir.z !== 0) {
+        const adj1x = current.x + dir.x, adj1z = current.z;
+        const adj2x = current.x, adj2z = current.z + dir.z;
+        if (
+          adj1x < 0 || adj1x >= width || adj1z < 0 || adj1z >= depth ||
+          adj2x < 0 || adj2x >= width || adj2z < 0 || adj2z >= depth ||
+          !grid[adj1x][adj1z] || !grid[adj2x][adj2z]
+        ) {
+          continue;
+        }
+      }
+
+      // Do not enforce clearance at neighbor selection to avoid no-path in narrow aisles.
+      // Clearance is enforced later during smoothing/centering.
+
+      let g = current.g + ((dir.x !== 0 && dir.z !== 0) ? 1.4 : 1);
+      const h = Math.hypot(nx - endX, nz - endZ);
+
+      // Add a penalty for being close to an obstacle to prefer centered paths
+      const obstacleDist = getObstacleDistance(grid, nx, nz, 4);
+      if (obstacleDist < 4) {
+        g += (4 - obstacleDist) * 2.5; // Heavily penalize proximity to obstacles
+      }
       const f = g + h;
       const existing = openList.find(n => n.x === nx && n.z === nz);
       if (existing && g >= existing.g) continue;
@@ -294,23 +563,38 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     start: { x: startX, z: startZ }, 
     end: { x: endX, z: endZ },
     endAccessible: grid[endX] && grid[endX][endZ],
-    startAccessible: grid[startX] && grid[startX][startZ]
+    startAccessible: grid[startX] && grid[startX][startZ],
+    floor
   });
   
-  return [];
+  // Fallback: return a minimal straight path so the UI can render while tuning
+  return [
+    { x: startX + 0.5, z: startZ + 0.5, floor },
+    { x: endX + 0.5, z: endZ + 0.5, floor }
+  ];
 };
 
 export const findShortestPath = (config: StoreConfig, start: PathNode, end: PathNode): PathNode[] => {
-  if (start.floor === end.floor) return runAStar(config, start.floor!, start, end);
+  if (start.floor === end.floor) {
+    return runAStar(config, start.floor!, start, end);
+  }
 
-  // Cross-floor routing: Find closest elevator to start
-  const closestElevator = config.elevators.reduce((prev, curr) => {
-    const dPrev = Math.abs(prev.x - start.x) + Math.abs(prev.z - start.z);
-    const dCurr = Math.abs(curr.x - start.x) + Math.abs(curr.z - start.z);
-    return dCurr < dPrev ? prev : prev;
+  // Cross-floor routing via nearest elevator
+  if (!config.elevators || config.elevators.length === 0) {
+    return []; // No elevator info; indicate no route
+  }
+
+  const nearestElev = config.elevators.reduce((best, e) => {
+    const db = Math.hypot(best.x - start.x, best.z - start.z);
+    const de = Math.hypot(e.x - start.x, e.z - start.z);
+    return de < db ? e : best;
   });
 
-  const path1 = runAStar(config, start.floor!, start, closestElevator);
-  const path2 = runAStar(config, end.floor!, closestElevator, end);
-  return [...path1, ...path2];
+  const elevOnStart: PathNode = { x: nearestElev.x, z: nearestElev.z, floor: start.floor };
+  const elevOnEnd: PathNode = { x: nearestElev.x, z: nearestElev.z, floor: end.floor };
+
+  const leg1 = runAStar(config, start.floor!, start, elevOnStart);
+  const leg2 = runAStar(config, end.floor!, elevOnEnd, end);
+
+  return [...leg1, ...leg2];
 };
