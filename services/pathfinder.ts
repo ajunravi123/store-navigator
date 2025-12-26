@@ -407,16 +407,33 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       { side: 'right' as const, dist: calculateEdgeDistance('right'), open: rightOpen }
     ];
 
+    // Calculate side lengths for preference
+    const sideLengths: Record<'front' | 'back' | 'left' | 'right', number> = {
+      front: uW,      // Width of shelf for front/back access
+      back: uW,       // Width of shelf for front/back access
+      left: shelfDepth,   // Depth of shelf for left/right access
+      right: shelfDepth   // Depth of shelf for left/right access
+    };
+
     const openSidesByDistance = sideDistances
       .filter(s => s.open && !isSideBlockedByOtherShelves(s.side))
-      .sort((a, b) => a.dist - b.dist);
+      .sort((a, b) => {
+        // First, prefer sides with lower distance
+        const distDiff = a.dist - b.dist;
+        if (Math.abs(distDiff) > 0.1) return distDiff; // If distance difference is significant, use it
+        // If distances are similar, prefer longer/lengthier sides
+        return sideLengths[b.side] - sideLengths[a.side];
+      });
 
     let approach: 'front' | 'back' | 'left' | 'right' = 'front';
     if (openSidesByDistance.length > 0) {
       approach = openSidesByDistance[0].side;
     } else {
-      // Fallback if all sides closed or blocked: choose by openness and width heuristics
+      // Fallback if all sides closed or blocked: prefer longer sides with openness heuristics
       const isWideShelf = uW > shelfDepth;
+      
+      // For wide shelves, prefer front/back (longer sides for access)
+      // For deep shelves, prefer left/right (longer sides for access)
       if (isWideShelf) {
         if (frontOpen && !isSideBlockedByOtherShelves('front')) approach = 'front'; 
         else if (backOpen && !isSideBlockedByOtherShelves('back')) approach = 'back'; 
