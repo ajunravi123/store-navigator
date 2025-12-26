@@ -285,11 +285,25 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
   );
 
   const allBays = getAllBays(config);
-  const targetBay = allBays.find(bay =>
-    bay.floor === floor &&
-    end.x >= bay.column && end.x <= bay.column + bay.width &&
-    end.z >= bay.row && end.z <= bay.row + bay.depth
-  );
+  // Find nearest bay to the endpoint on the same floor (endpoint may be placed just outside bay bounds)
+  let targetBay = undefined as ReturnType<typeof getAllBays>[number] | undefined;
+  {
+    const baysOnFloor = allBays.filter(b => b.floor === floor);
+    let bestDist = Infinity;
+    for (const b of baysOnFloor) {
+      const rx1 = b.column, rx2 = b.column + b.width;
+      const rz1 = b.row,    rz2 = b.row + b.depth;
+      const dx = end.x < rx1 ? (rx1 - end.x) : (end.x > rx2 ? (end.x - rx2) : 0);
+      const dz = end.z < rz1 ? (rz1 - end.z) : (end.z > rz2 ? (end.z - rz2) : 0);
+      const dist = Math.hypot(dx, dz);
+      if (dist < bestDist) {
+        bestDist = dist;
+        targetBay = b;
+      }
+    }
+    // Only accept if reasonably close to a bay
+    if (bestDist > 3.0) targetBay = undefined;
+  }
 
   allBays.forEach((bay) => {
     if (bay.floor !== floor) return;
@@ -302,6 +316,22 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
 
     // Block individual shelves (not the entire bay) to allow paths through gaps
     // Removed space checking - paths will always be generated even through narrow spaces
+    // Determine which shelf index is targeted for this bay based on endpoint X
+    let targetShelfIdxForBay = -1;
+    if (targetBay && targetBay.id === bay.id) {
+      const shelfSpacingForIdx = bay.shelfSpacing ?? 0;
+      const numShelvesForIdx = bay.shelves.length;
+      const totalSpacingForIdx = shelfSpacingForIdx * Math.max(0, numShelvesForIdx - 1);
+      const availableWidthForIdx = bay.width - totalSpacingForIdx;
+      const unitWidthForIdx = numShelvesForIdx > 0 ? availableWidthForIdx / numShelvesForIdx : bay.width;
+      // Compute nearest shelf section center index from endpoint X
+      const baseCenterX = bay.column + unitWidthForIdx / 2;
+      const stepX = unitWidthForIdx + shelfSpacingForIdx;
+      let roughIdx = Math.round((end.x - baseCenterX) / (stepX || 1));
+      roughIdx = Math.max(0, Math.min(numShelvesForIdx - 1, roughIdx));
+      targetShelfIdxForBay = roughIdx;
+    }
+
     bay.shelves.forEach((shelf, idx) => {
       const closedSides = shelf.closedSides ?? [];
       
@@ -323,37 +353,13 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       const safeDistance = 0.8; // Safe distance from shelf face (matches App.tsx)
       
       // Check if this is the target shelf (the one we're navigating to)
-      const isTargetShelf = targetBay && 
-        shelfCenterX >= targetBay.column && shelfCenterX <= targetBay.column + targetBay.width &&
-        shelfCenterZ >= targetBay.row && shelfCenterZ <= targetBay.row + targetBay.depth;
+      const isTargetShelf = !!(targetBay && targetBay.id === bay.id && idx === targetShelfIdxForBay);
       
       for (let x = Math.floor(shelfLeftX - buffer); x <= Math.floor(shelfRightX + buffer); x++) {
         // Block entire shelf depth (from backFaceZ to frontFaceZ)
         for (let z = Math.floor(backFaceZ - buffer); z <= Math.floor(frontFaceZ + buffer); z++) {
           if (x < 0 || x >= width || z < 0 || z >= depth) continue;
-
-          // Only allow endpoint area override for the target shelf, not other shelves
-          // This ensures paths don't go through other shelves
-          if (isTargetShelf) {
-            const nodeX = x + 0.5, nodeZ = z + 0.5;
-            const distToEnd = Math.sqrt((nodeX - end.x) ** 2 + (nodeZ - end.z) ** 2);
-            
-            // Allow endpoint area - endpoint is at safeDistance (0.8) from shelf face
-            // Check if this node is near the endpoint (within 1.0 units)
-            if (distToEnd < 1.0) {
-            // Check if this node is in the endpoint area (outside shelf, at safe distance)
-            const isInFrontAisle = nodeZ >= frontFaceZ + safeDistance - 0.3 && nodeZ <= frontFaceZ + safeDistance + 0.3;
-            const isInBackAisle = nodeZ <= backFaceZ - safeDistance + 0.3 && nodeZ >= backFaceZ - safeDistance - 0.3;
-            const isInRightAisle = nodeX >= shelfRightX + safeDistance - 0.3 && nodeX <= shelfRightX + safeDistance + 0.3;
-            const isInLeftAisle = nodeX <= shelfLeftX - safeDistance + 0.3 && nodeX >= shelfLeftX - safeDistance - 0.3;
-            
-            // Allow if it's in the endpoint area (aisle space, not shelf interior)
-            if ((isInFrontAisle || isInBackAisle || isInRightAisle || isInLeftAisle) && 
-                (nodeZ < backFaceZ || nodeZ > frontFaceZ || nodeX < shelfLeftX || nodeX > shelfRightX)) {
-              continue; // Allow endpoint area only for target shelf
-            }
-          }
-          }
+          // No endpoint overrides inside shelf interior; always block
 
           grid[x][z] = false; // Block shelf interior - always block non-target shelves
         }
@@ -451,22 +457,82 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     }
   });
 
-  // Ensure endpoint cell and nearby cells are always accessible
-  // This ensures the path can reach the destination point safely, even through narrow spaces
-  // IMPORTANT: This must happen AFTER all blocking to override everything
+  // Compute corrected endpoint with clearance and inflate obstacles for global buffer
   const endX = Math.min(width - 1, Math.max(0, Math.floor(end.x)));
   const endZ = Math.min(depth - 1, Math.max(0, Math.floor(end.z)));
-  
-  // Ensure a small area around the endpoint is accessible to avoid dead-ends (7x7)
-  for (let dx = -3; dx <= 3; dx++) {
-    for (let dz = -3; dz <= 3; dz++) {
-      const nx = endX + dx;
-      const nz = endZ + dz;
-      if (nx >= 0 && nx < width && nz >= 0 && nz < depth) {
-        grid[nx][nz] = true;
-      }
+  const CLEARANCE_CELLS = 1;
+  inflateObstaclesInRegion(grid, 0, 0, width, depth, CLEARANCE_CELLS);
+
+  // Default corrected goal and render end
+  // correctedGoal: used by A* (guaranteed free cell outside inflated boundary)
+  // renderEnd: exactly on the shelf/block physical boundary (epsilon outside)
+  let correctedGoal: PathNode = { ...end, floor };
+  let renderEnd: PathNode = { ...end, floor };
+  if (targetBay) {
+    const sp = targetBay.shelfSpacing ?? 0;
+    const ns = targetBay.shelves.length;
+    const totalSp = sp * Math.max(0, ns - 1);
+    const availW = targetBay.width - totalSp;
+    const uW = ns > 0 ? availW / ns : targetBay.width;
+    const baseCenterX = targetBay.column + uW / 2;
+    const stepX = uW + sp;
+    let idx = Math.round((end.x - baseCenterX) / (stepX || 1));
+    idx = Math.max(0, Math.min(ns - 1, idx));
+    const shelfCenterX = targetBay.column + (uW / 2) + (idx * (uW + sp));
+    const shelfLeftX = shelfCenterX - uW / 2;
+    const shelfRightX = shelfCenterX + uW / 2;
+    const shelfCenterZ = targetBay.row + targetBay.depth / 2;
+    const shelfDepth = targetBay.depth - 0.5;
+    const frontFaceZ = shelfCenterZ + shelfDepth / 2;
+    const backFaceZ = shelfCenterZ - shelfDepth / 2;
+    const closed = targetBay.shelves[idx]?.closedSides ?? [];
+    const isFrontClosed = closed.includes('front');
+    const isBackClosed = closed.length === 0 || closed.includes('back');
+    const isLeftClosed = closed.includes('left');
+    const isRightClosed = closed.includes('right');
+    const isWideShelf = uW > shelfDepth;
+    const frontOpen = !isFrontClosed;
+    const backOpen = !isBackClosed;
+    const leftOpen = !isLeftClosed;
+    const rightOpen = !isRightClosed;
+    let approach: 'front' | 'back' | 'left' | 'right' = 'front';
+    if (isWideShelf) {
+      if (frontOpen) approach = 'front'; else if (backOpen) approach = 'back'; else if (rightOpen) approach = 'right'; else if (leftOpen) approach = 'left';
+    } else {
+      if (rightOpen) approach = 'right'; else if (leftOpen) approach = 'left'; else if (frontOpen) approach = 'front'; else if (backOpen) approach = 'back';
     }
+    const offset = CLEARANCE_CELLS + 0.1;
+    const EPS = 0.01; // tiny epsilon to sit exactly on the face without entering
+    let candX = shelfCenterX;
+    let candZ = shelfCenterZ;
+    if (approach === 'front') candZ = frontFaceZ + offset;
+    if (approach === 'back')  candZ = backFaceZ - offset;
+    if (approach === 'right') candX = shelfRightX + offset;
+    if (approach === 'left')  candX = shelfLeftX - offset;
+
+    // Compute renderEnd on the exact face line (epsilon outward to remain outside)
+    let faceX = shelfCenterX, faceZ = shelfCenterZ;
+    if (approach === 'front') faceZ = frontFaceZ + EPS;
+    if (approach === 'back')  faceZ = backFaceZ - EPS;
+    if (approach === 'right') faceX = shelfRightX + EPS;
+    if (approach === 'left')  faceX = shelfLeftX - EPS;
+    let dirX = 0, dirZ = 0;
+    if (approach === 'front') dirZ = 1;
+    if (approach === 'back')  dirZ = -1;
+    if (approach === 'right') dirX = 1;
+    if (approach === 'left')  dirX = -1;
+    let bestX = candX, bestZ = candZ;
+    for (let s = 0; s <= 24; s++) {
+      const px = candX + dirX * s * 0.25;
+      const pz = candZ + dirZ * s * 0.25;
+      const cx = Math.floor(px), cz = Math.floor(pz);
+      if (cx >= 0 && cx < width && cz >= 0 && cz < depth && grid[cx][cz]) { bestX = px; bestZ = pz; break; }
+    }
+    correctedGoal = { x: Math.max(0, Math.min(bestX, width - 1)), z: Math.max(0, Math.min(bestZ, depth - 1)), floor };
+    renderEnd = { x: Math.max(0, Math.min(faceX, width - 1)), z: Math.max(0, Math.min(faceZ, depth - 1)), floor };
   }
+  const goalX = Math.min(width - 1, Math.max(0, Math.floor(correctedGoal.x)));
+  const goalZ = Math.min(depth - 1, Math.max(0, Math.floor(correctedGoal.z)));
 
   // Ensure start point (entrance) is always accessible
   const startX = Math.min(width - 1, Math.max(0, Math.floor(start.x)));
@@ -486,7 +552,7 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
   const openList: GridNode[] = [];
   const closedList: Set<string> = new Set();
 
-  const startH = Math.hypot(startX - endX, startZ - endZ);
+  const startH = Math.hypot(startX - goalX, startZ - goalZ);
   openList.push({ x: startX, z: startZ, g: 0, h: startH, f: startH, parent: null });
 
   while (openList.length > 0) {
@@ -495,30 +561,16 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     const current = openList.splice(currentIndex, 1)[0];
     closedList.add(`${current.x},${current.z}`);
 
-    if (current.x === endX && current.z === endZ) {
+    if (current.x === goalX && current.z === goalZ) {
       const path: PathNode[] = [];
       let temp: GridNode | null = current;
       while (temp) { path.push({ x: temp.x + 0.5, z: temp.z + 0.5, floor }); temp = temp.parent; }
-      path[0] = { ...end, floor };
-      let finalPath = path.reverse();
-      
-      // Smooth the path by removing unnecessary waypoints (path simplification)
-      // This makes paths through departments look more natural
-      if (finalPath.length > 2) {
-        finalPath = simplifyPath(finalPath, grid);
-      }
-      
-      // Ensure endpoint matches exactly (for accuracy)
-      if (finalPath.length > 0) {
-        finalPath[finalPath.length - 1] = { ...end, floor };
-      }
-      
-      // Debug logging for troubleshooting
-      if (finalPath.length === 0) {
-        console.warn('Pathfinder: Path found but is empty', { start, end, endX, endZ });
-      }
-      
-      return finalPath;
+      // Set the final node to renderEnd so the path visually touches the face
+      path[0] = { ...renderEnd, floor };
+      const finalPath = path.reverse();
+      // Minimize with line-of-sight shortcutting while respecting clearance
+      const minimized = shortcutPath(finalPath, grid, CLEARANCE_CELLS);
+      return minimized;
     }
 
     const directions = [{ x: 0, z: 1 }, { x: 0, z: -1 }, { x: 1, z: 0 }, { x: -1, z: 0 }, { x: 1, z: 1 }, { x: 1, z: -1 }, { x: -1, z: 1 }, { x: -1, z: -1 }];
@@ -542,14 +594,8 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       // Do not enforce clearance at neighbor selection to avoid no-path in narrow aisles.
       // Clearance is enforced later during smoothing/centering.
 
-      let g = current.g + ((dir.x !== 0 && dir.z !== 0) ? 1.4 : 1);
-      const h = Math.hypot(nx - endX, nz - endZ);
-
-      // Add a penalty for being close to an obstacle to prefer centered paths
-      const obstacleDist = getObstacleDistance(grid, nx, nz, 4);
-      if (obstacleDist < 4) {
-        g += (4 - obstacleDist) * 2.5; // Heavily penalize proximity to obstacles
-      }
+      let g = current.g + ((dir.x !== 0 && dir.z !== 0) ? Math.SQRT2 : 1);
+      const h = Math.hypot(nx - goalX, nz - goalZ);
       const f = g + h;
       const existing = openList.find(n => n.x === nx && n.z === nz);
       if (existing && g >= existing.g) continue;
@@ -561,8 +607,8 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
   // Debug logging when no path found
   console.warn('Pathfinder: No path found', { 
     start: { x: startX, z: startZ }, 
-    end: { x: endX, z: endZ },
-    endAccessible: grid[endX] && grid[endX][endZ],
+    end: { x: goalX, z: goalZ },
+    endAccessible: grid[goalX] && grid[goalX][goalZ],
     startAccessible: grid[startX] && grid[startX][startZ],
     floor
   });
@@ -570,7 +616,7 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
   // Fallback: return a minimal straight path so the UI can render while tuning
   return [
     { x: startX + 0.5, z: startZ + 0.5, floor },
-    { x: endX + 0.5, z: endZ + 0.5, floor }
+    { x: goalX + 0.5, z: goalZ + 0.5, floor }
   ];
 };
 

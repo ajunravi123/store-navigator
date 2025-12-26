@@ -145,8 +145,8 @@ const App: React.FC = () => {
     const shelfCenterX = targetX; // Exact center X of the shelf section
     
     // Position path endpoint at the center of the open side with proper spacing
-    // Use a tighter safe distance (0.2 units) to visually touch the shelf without overlap
-    const safeDistance = 0.2; // Bring path endpoint closer to the shelf face
+    // Align with pathfinder's aisle stripe (0.8 units from face)
+    const safeDistance = 0.8;
     
     let targetZ: number = shelfCenterZ;
     let targetXFinal: number = shelfCenterX; // Default to center
