@@ -284,6 +284,13 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     new Array(Math.ceil(depth)).fill(true)
   );
 
+  // Cost grid: default cost 1 for normal tiles. Higher values penalize traversal through that tile.
+  // Mark bay interior floor tiles with a penalty so A* favors routing around bays (aisles).
+  const costGrid: number[][] = Array.from({ length: Math.ceil(width) }, () => 
+    new Array(Math.ceil(depth)).fill(1)
+  );
+  const BAY_FLOOR_PENALTY = 6; // Higher value makes crossing bay floor less attractive
+
   const allBays = getAllBays(config);
   // Find nearest bay to the endpoint on the same floor (endpoint may be placed just outside bay bounds)
   let targetBay = undefined as ReturnType<typeof getAllBays>[number] | undefined;
@@ -455,6 +462,15 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
         }
       }
     }
+
+    // Penalize traversing across bay floor (prefer routing around aisles)
+    for (let x = Math.floor(bay.column); x <= Math.floor(bay.column + bay.width); x++) {
+      for (let z = Math.floor(bay.row); z <= Math.floor(bay.row + bay.depth); z++) {
+        if (x >= 0 && x < width && z >= 0 && z < depth && grid[x][z]) {
+          costGrid[x][z] = BAY_FLOOR_PENALTY;
+        }
+      }
+    }
   });
 
   // Compute corrected endpoint with clearance and inflate obstacles for global buffer
@@ -490,25 +506,58 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     const isBackClosed = closed.length === 0 || closed.includes('back');
     const isLeftClosed = closed.includes('left');
     const isRightClosed = closed.includes('right');
-    const isWideShelf = uW > shelfDepth;
     const frontOpen = !isFrontClosed;
     const backOpen = !isBackClosed;
     const leftOpen = !isLeftClosed;
     const rightOpen = !isRightClosed;
-    let approach: 'front' | 'back' | 'left' | 'right' = 'front';
-    if (isWideShelf) {
-      if (frontOpen) approach = 'front'; else if (backOpen) approach = 'back'; else if (rightOpen) approach = 'right'; else if (leftOpen) approach = 'left';
-    } else {
-      if (rightOpen) approach = 'right'; else if (leftOpen) approach = 'left'; else if (frontOpen) approach = 'front'; else if (backOpen) approach = 'back';
-    }
+
+    // Prefer an open side that lies outside the bay interior (i.e., in an aisle) to avoid crossing bay floor.
+    const candidateSides: Array<{ side: 'front'|'back'|'left'|'right', x: number, z: number, open: boolean }> = [];
     const offset = CLEARANCE_CELLS + 0.1;
+    // front
+    candidateSides.push({ side: 'front', x: shelfCenterX, z: frontFaceZ + offset, open: frontOpen });
+    // back
+    candidateSides.push({ side: 'back', x: shelfCenterX, z: backFaceZ - offset, open: backOpen });
+    // right
+    candidateSides.push({ side: 'right', x: shelfRightX + offset, z: shelfCenterZ, open: rightOpen });
+    // left
+    candidateSides.push({ side: 'left', x: shelfLeftX - offset, z: shelfCenterZ, open: leftOpen });
+
+    // Check which candidate points are outside the bay interior rectangle
+    const insideBay = (x: number, z: number) => {
+      return x >= targetBay!.column && x <= (targetBay!.column + targetBay!.width) && z >= targetBay!.row && z <= (targetBay!.row + targetBay!.depth);
+    };
+
+    // Prefer open sides that are outside bay interior; if multiple, pick nearest to endpoint; else fallback to best reachable point logic below
+    let chosen: typeof candidateSides[0] | null = null;
+    let bestDist = Infinity;
+    for (const c of candidateSides) {
+      if (!c.open) continue;
+      const cInside = insideBay(c.x, c.z);
+      if (!cInside) {
+        const d = Math.hypot(end.x - c.x, end.z - c.z);
+        if (d < bestDist) { bestDist = d; chosen = c; }
+      }
+    }
+
+    let approach: 'front' | 'back' | 'left' | 'right' = 'front';
+    if (chosen) approach = chosen.side;
+    else {
+      // Fallback: choose by openness and width heuristics similar to original behavior
+      const isWideShelf = uW > shelfDepth;
+      if (isWideShelf) {
+        if (frontOpen) approach = 'front'; else if (backOpen) approach = 'back'; else if (rightOpen) approach = 'right'; else if (leftOpen) approach = 'left';
+      } else {
+        if (rightOpen) approach = 'right'; else if (leftOpen) approach = 'left'; else if (frontOpen) approach = 'front'; else if (backOpen) approach = 'back';
+      }
+    }
     const EPS = 0.01; // tiny epsilon to sit exactly on the face without entering
     let candX = shelfCenterX;
     let candZ = shelfCenterZ;
-    if (approach === 'front') candZ = frontFaceZ + offset;
-    if (approach === 'back')  candZ = backFaceZ - offset;
-    if (approach === 'right') candX = shelfRightX + offset;
-    if (approach === 'left')  candX = shelfLeftX - offset;
+    if (approach === 'front') candZ = frontFaceZ + (CLEARANCE_CELLS + 0.1);
+    if (approach === 'back')  candZ = backFaceZ - (CLEARANCE_CELLS + 0.1);
+    if (approach === 'right') candX = shelfRightX + (CLEARANCE_CELLS + 0.1);
+    if (approach === 'left')  candX = shelfLeftX - (CLEARANCE_CELLS + 0.1);
 
     // Compute renderEnd on the exact face line (epsilon outward to remain outside)
     let faceX = shelfCenterX, faceZ = shelfCenterZ;
@@ -534,6 +583,15 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
   const goalX = Math.min(width - 1, Math.max(0, Math.floor(correctedGoal.x)));
   const goalZ = Math.min(depth - 1, Math.max(0, Math.floor(correctedGoal.z)));
 
+  // Ensure corrected goal vicinity isn't left with high penalty which could make reaching it difficult
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      const gx = goalX + dx;
+      const gz = goalZ + dz;
+      if (gx >= 0 && gx < width && gz >= 0 && gz < depth) costGrid[gx][gz] = 1;
+    }
+  }
+
   // Ensure start point (entrance) is always accessible
   const startX = Math.min(width - 1, Math.max(0, Math.floor(start.x)));
   const startZ = Math.min(depth - 1, Math.max(0, Math.floor(start.z)));
@@ -545,6 +603,7 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       const nz = startZ + dz;
       if (nx >= 0 && nx < width && nz >= 0 && nz < depth) {
         grid[nx][nz] = true; // Force start area to be accessible
+        costGrid[nx][nz] = 1; // Ensure start area has normal cost so penalty doesn't trap the route
       }
     }
   }
@@ -594,7 +653,9 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       // Do not enforce clearance at neighbor selection to avoid no-path in narrow aisles.
       // Clearance is enforced later during smoothing/centering.
 
-      let g = current.g + ((dir.x !== 0 && dir.z !== 0) ? Math.SQRT2 : 1);
+      const baseMove = (dir.x !== 0 && dir.z !== 0) ? Math.SQRT2 : 1;
+      const tileCost = costGrid[nx]?.[nz] ?? 1;
+      let g = current.g + baseMove * tileCost;
       const h = Math.hypot(nx - goalX, nz - goalZ);
       const f = g + h;
       const existing = openList.find(n => n.x === nx && n.z === nz);

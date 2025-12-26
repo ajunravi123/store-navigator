@@ -261,6 +261,81 @@ const AdminForm: React.FC<AdminFormProps> = ({
         if (expandedProductId === id) onProductExpand(null);
     };
 
+    // Auto-enable closed sides for adjacent shelves (common sides between bays)
+    const getAdjacentSidesForBay = (bay: Bay, config: StoreConfig) => {
+        const allBays = getAllBays(config);
+        const adjacent = { left: false, right: false, front: false, back: false };
+        allBays.forEach(other => {
+            if (other.id === bay.id || other.floor !== bay.floor) return;
+            const zOverlap = !(other.row + other.depth <= bay.row || other.row >= bay.row + bay.depth);
+            const xOverlap = !(other.column + other.width <= bay.column || other.column >= bay.column + bay.width);
+
+            // other is to the right of bay
+            if (other.column === bay.column + bay.width && zOverlap) adjacent.right = true;
+            // other is to the left of bay
+            if (other.column + other.width === bay.column && zOverlap) adjacent.left = true;
+            // other is in front (positive Z)
+            if (other.row === bay.row + bay.depth && xOverlap) adjacent.front = true;
+            // other is at back
+            if (other.row + other.depth === bay.row && xOverlap) adjacent.back = true;
+        });
+        return adjacent;
+    };
+
+    const applyAutoClosedSides = () => {
+        let changed = false;
+        const newZones = storeConfig.zones.map(zone => ({
+            ...zone,
+            aisles: zone.aisles.map(aisle => ({
+                ...aisle,
+                bays: aisle.bays.map(bay => {
+                    const adjacent = getAdjacentSidesForBay(bay, storeConfig);
+                    const newShelves = bay.shelves.map(shelf => {
+                        const existing = shelf.closedSides;
+
+                        // Only auto-apply to shelves that are in their default state (undefined => back closed by default)
+                        // or explicitly empty ([]) which indicates user opened all sides
+                        const shouldAutoApply = existing === undefined || (Array.isArray(existing) && existing.length === 0);
+                        if (!shouldAutoApply) return shelf;
+
+                        const baseSet = new Set<string>(existing === undefined ? ['back'] : existing);
+                        if (adjacent.left) baseSet.add('left');
+                        if (adjacent.right) baseSet.add('right');
+                        if (adjacent.front) baseSet.add('front');
+                        if (adjacent.back) baseSet.add('back');
+
+                        let newClosed: ('left'|'right'|'front'|'back')[]|undefined;
+                        if (baseSet.size === 1 && baseSet.has('back')) {
+                            newClosed = undefined;
+                        } else if (baseSet.size === 0) {
+                            newClosed = [];
+                        } else {
+                            newClosed = Array.from(baseSet) as any;
+                        }
+
+                        const eq = (existing === undefined && newClosed === undefined) || (Array.isArray(existing) && Array.isArray(newClosed) && existing.length === newClosed.length && existing.every(e => (newClosed as any).includes(e)));
+                        if (!eq) {
+                            changed = true;
+                            return { ...shelf, closedSides: newClosed };
+                        }
+                        return shelf;
+                    });
+                    if (changed) return { ...bay, shelves: newShelves };
+                    return bay;
+                })
+            }))
+        }));
+
+        if (changed) {
+            updateStore({ zones: newZones as any });
+        }
+    };
+
+    React.useEffect(() => {
+        applyAutoClosedSides();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [storeConfig.zones]);
+
     return (
         <div className="flex flex-col h-full bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm">
             <div className="flex border-b border-slate-100 p-2 bg-slate-50/50">
@@ -655,8 +730,49 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                         <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Shelves</span>
                                                         <button
                                                             onClick={() => {
-                                                                const newShelf = { id: `${bay.id}-${String.fromCharCode(65 + bay.shelves.length)}`, name: `Shelf ${String.fromCharCode(65 + bay.shelves.length)}`, closedSides: ['back'] };
-                                                                updateBay(bay.id, { shelves: [...bay.shelves, newShelf] });
+                                                                const idx = bay.shelves.length;
+                                                                const id = `${bay.id}-${String.fromCodePoint(65 + idx)}`;
+                                                                const name = `Shelf ${String.fromCodePoint(65 + idx)}`;
+
+                                                                // Compute default closed sides based on adjacent bays and neighboring shelves
+                                                                const adjacent = getAdjacentSidesForBay(bay, storeConfig);
+                                                                const baseSet = new Set<string>();
+
+                                                                if (adjacent.left) baseSet.add('left');
+                                                                if (adjacent.right) baseSet.add('right');
+                                                                if (adjacent.front) baseSet.add('front');
+                                                                if (adjacent.back) baseSet.add('back');
+
+                                                                // If there's a left neighbor shelf within the same bay, the new shelf's left side faces a shelf
+                                                                if (idx > 0) baseSet.add('left');
+
+                                                                let newClosed: ('left'|'right'|'front'|'back')[] | undefined;
+                                                                if (baseSet.size === 0) {
+                                                                    newClosed = undefined; // keep default (back closed implicitly)
+                                                                } else if (baseSet.size === 1 && baseSet.has('back')) {
+                                                                    newClosed = undefined; // only back => keep default
+                                                                } else {
+                                                                    newClosed = Array.from(baseSet) as any;
+                                                                }
+
+                                                                const newShelf = newClosed === undefined ? { id, name } : { id, name, closedSides: newClosed };
+
+                                                                // Ensure the neighbor's facing side is closed as well (both sides closed)
+                                                                const newShelves = bay.shelves.map((s, i) => {
+                                                                    if (i === idx - 1 && idx > 0) {
+                                                                        const existing = s.closedSides;
+                                                                        // Always add the right side to the previous shelf so both sides are closed
+                                                                        const prevSet = new Set<string>(existing === undefined ? ['back'] : existing);
+                                                                        prevSet.add('right');
+                                                                        let prevClosed: ('left'|'right'|'front'|'back')[] | undefined;
+                                                                        if (prevSet.size === 1 && prevSet.has('back')) prevClosed = undefined;
+                                                                        else prevClosed = Array.from(prevSet) as any;
+                                                                        return { ...s, closedSides: prevClosed };
+                                                                    }
+                                                                    return s;
+                                                                });
+
+                                                                updateBay(bay.id, { shelves: [...newShelves, newShelf] });
                                                             }}
                                                             className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase"
                                                         >
