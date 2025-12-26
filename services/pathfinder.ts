@@ -312,6 +312,145 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     if (bestDist > 3.0) targetBay = undefined;
   }
 
+  // Pre-compute optimal shelf opening configuration before building the grid
+  let optimalShelfApproach: { approach: 'front' | 'back' | 'left' | 'right'; closedSides: ('left' | 'right' | 'front' | 'back')[] } | undefined;
+  if (targetBay) {
+    const sp = targetBay.shelfSpacing ?? 0;
+    const ns = targetBay.shelves.length;
+    const totalSp = sp * Math.max(0, ns - 1);
+    const availW = targetBay.width - totalSp;
+    const uW = ns > 0 ? availW / ns : targetBay.width;
+    const baseCenterX = targetBay.column + uW / 2;
+    const stepX = uW + sp;
+    let targetShelfIdx = Math.round((end.x - baseCenterX) / (stepX || 1));
+    targetShelfIdx = Math.max(0, Math.min(ns - 1, targetShelfIdx));
+    
+    const shelfCenterX = targetBay.column + (uW / 2) + (targetShelfIdx * (uW + sp));
+    const shelfLeftX = shelfCenterX - uW / 2;
+    const shelfRightX = shelfCenterX + uW / 2;
+    const shelfCenterZ = targetBay.row + targetBay.depth / 2;
+    const shelfDepth = targetBay.depth - 0.5;
+    const frontFaceZ = shelfCenterZ + shelfDepth / 2;
+    const backFaceZ = shelfCenterZ - shelfDepth / 2;
+
+    // Determine which sides are currently open
+    const closed = targetBay.shelves[targetShelfIdx]?.closedSides ?? [];
+    const frontOpen = !closed.includes('front');
+    const backOpen = !closed.includes('back') && closed.length > 0;
+    const leftOpen = !closed.includes('left');
+    const rightOpen = !closed.includes('right');
+
+    // Calculate lowest distance from bay floor edges to destination point
+    const calculateEdgeDistance = (side: 'front' | 'back' | 'left' | 'right'): number => {
+      let closestPoint = { x: end.x, z: end.z };
+      
+      if (side === 'front') {
+        closestPoint.x = Math.max(targetBay.column, Math.min(targetBay.column + targetBay.width, end.x));
+        closestPoint.z = frontFaceZ;
+      } else if (side === 'back') {
+        closestPoint.x = Math.max(targetBay.column, Math.min(targetBay.column + targetBay.width, end.x));
+        closestPoint.z = backFaceZ;
+      } else if (side === 'left') {
+        closestPoint.x = shelfLeftX;
+        closestPoint.z = Math.max(targetBay.row, Math.min(targetBay.row + targetBay.depth, end.z));
+      } else if (side === 'right') {
+        closestPoint.x = shelfRightX;
+        closestPoint.z = Math.max(targetBay.row, Math.min(targetBay.row + targetBay.depth, end.z));
+      }
+      
+      return Math.hypot(end.x - closestPoint.x, end.z - closestPoint.z);
+    };
+
+    // Check if approach side is blocked by other shelves in the same bay
+    const isSideBlockedByOtherShelves = (side: 'front' | 'back' | 'left' | 'right'): boolean => {
+      // Check all other shelves in the same bay
+      for (let i = 0; i < targetBay.shelves.length; i++) {
+        if (i === targetShelfIdx) continue; // Skip the target shelf itself
+
+        const otherShelf = targetBay.shelves[i];
+        const otherClosed = otherShelf.closedSides ?? [];
+        
+        // Calculate other shelf's position
+        const otherShelfCenterX = targetBay.column + (uW / 2) + (i * (uW + sp));
+        const otherShelfLeftX = otherShelfCenterX - uW / 2;
+        const otherShelfRightX = otherShelfCenterX + uW / 2;
+        
+        // Check if this other shelf would block the approach from the chosen side
+        if (side === 'front' || side === 'back') {
+          // For front/back approaches, check if there's another shelf in the same horizontal position blocking front/back
+          const isInFrontBackLine = otherShelfLeftX < shelfRightX && otherShelfRightX > shelfLeftX;
+          if (isInFrontBackLine) {
+            const isFrontBlocked = side === 'front' && !otherClosed.includes('front');
+            const isBackBlocked = side === 'back' && !otherClosed.includes('back');
+            if (isFrontBlocked || isBackBlocked) return true;
+          }
+        } else if (side === 'left' || side === 'right') {
+          // For left/right approaches, check if there's another shelf directly left/right
+          const isLeftOfTarget = side === 'left' && otherShelfRightX < shelfLeftX;
+          const isRightOfTarget = side === 'right' && otherShelfLeftX > shelfRightX;
+          
+          if (isLeftOfTarget || isRightOfTarget) {
+            // Check if the other shelf has its open side facing the target shelf
+            const isFrontOrBackOpen = !otherClosed.includes('front') || (otherClosed.length === 0 || otherClosed.includes('back'));
+            if (isFrontOrBackOpen) return true; // Other shelf blocks the side access
+          }
+        }
+      }
+      return false;
+    };
+
+    // Find the open side with lowest distance to destination
+    const sideDistances = [
+      { side: 'front' as const, dist: calculateEdgeDistance('front'), open: frontOpen },
+      { side: 'back' as const, dist: calculateEdgeDistance('back'), open: backOpen },
+      { side: 'left' as const, dist: calculateEdgeDistance('left'), open: leftOpen },
+      { side: 'right' as const, dist: calculateEdgeDistance('right'), open: rightOpen }
+    ];
+
+    const openSidesByDistance = sideDistances
+      .filter(s => s.open && !isSideBlockedByOtherShelves(s.side))
+      .sort((a, b) => a.dist - b.dist);
+
+    let approach: 'front' | 'back' | 'left' | 'right' = 'front';
+    if (openSidesByDistance.length > 0) {
+      approach = openSidesByDistance[0].side;
+    } else {
+      // Fallback if all sides closed or blocked: choose by openness and width heuristics
+      const isWideShelf = uW > shelfDepth;
+      if (isWideShelf) {
+        if (frontOpen && !isSideBlockedByOtherShelves('front')) approach = 'front'; 
+        else if (backOpen && !isSideBlockedByOtherShelves('back')) approach = 'back'; 
+        else if (rightOpen && !isSideBlockedByOtherShelves('right')) approach = 'right'; 
+        else if (leftOpen && !isSideBlockedByOtherShelves('left')) approach = 'left';
+      } else {
+        if (rightOpen && !isSideBlockedByOtherShelves('right')) approach = 'right'; 
+        else if (leftOpen && !isSideBlockedByOtherShelves('left')) approach = 'left'; 
+        else if (frontOpen && !isSideBlockedByOtherShelves('front')) approach = 'front'; 
+        else if (backOpen && !isSideBlockedByOtherShelves('back')) approach = 'back';
+      }
+    }
+
+    // Determine optimal closed sides based on the chosen approach
+    const closedSides: ('left' | 'right' | 'front' | 'back')[] = [];
+    if (approach === 'front' || approach === 'back') {
+      closedSides.push('left', 'right');
+      if (approach === 'front') {
+        closedSides.push('back');
+      } else {
+        closedSides.push('front');
+      }
+    } else if (approach === 'left' || approach === 'right') {
+      closedSides.push('front', 'back');
+      if (approach === 'right') {
+        closedSides.push('left');
+      } else {
+        closedSides.push('right');
+      }
+    }
+
+    optimalShelfApproach = { approach, closedSides };
+  }
+
   allBays.forEach((bay) => {
     if (bay.floor !== floor) return;
 
@@ -340,7 +479,14 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     }
 
     bay.shelves.forEach((shelf, idx) => {
-      const closedSides = shelf.closedSides ?? [];
+      // Determine which sides should be closed for this shelf
+      let closedSides = shelf.closedSides ?? [];
+      
+      // If this is the target shelf, use the optimal configuration based on approach
+      const isTargetShelf = !!(targetBay && targetBay.id === bay.id && idx === targetShelfIdxForBay);
+      if (isTargetShelf && optimalShelfApproach !== undefined) {
+        closedSides = optimalShelfApproach.closedSides;
+      }
       
       // Calculate shelf position
       const shelfCenterX = bay.column + (unitWidth / 2) + (idx * (unitWidth + shelfSpacing));
@@ -357,10 +503,6 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       // Block everything from backFaceZ to frontFaceZ (the shelf interior)
       // Endpoint will be safely away (0.8 units) from the shelf face
       const buffer = 0.5; // Increased buffer to create a safety margin
-      const safeDistance = 0.8; // Safe distance from shelf face (matches App.tsx)
-      
-      // Check if this is the target shelf (the one we're navigating to)
-      const isTargetShelf = !!(targetBay && targetBay.id === bay.id && idx === targetShelfIdxForBay);
       
       for (let x = Math.floor(shelfLeftX - buffer); x <= Math.floor(shelfRightX + buffer); x++) {
         // Block entire shelf depth (from backFaceZ to frontFaceZ)
@@ -484,7 +626,7 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
   // renderEnd: exactly on the shelf/block physical boundary (epsilon outside)
   let correctedGoal: PathNode = { ...end, floor };
   let renderEnd: PathNode = { ...end, floor };
-  if (targetBay) {
+  if (targetBay && optimalShelfApproach) {
     const sp = targetBay.shelfSpacing ?? 0;
     const ns = targetBay.shelves.length;
     const totalSp = sp * Math.max(0, ns - 1);
@@ -501,57 +643,10 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     const shelfDepth = targetBay.depth - 0.5;
     const frontFaceZ = shelfCenterZ + shelfDepth / 2;
     const backFaceZ = shelfCenterZ - shelfDepth / 2;
-    const closed = targetBay.shelves[idx]?.closedSides ?? [];
-    const isFrontClosed = closed.includes('front');
-    const isBackClosed = closed.length === 0 || closed.includes('back');
-    const isLeftClosed = closed.includes('left');
-    const isRightClosed = closed.includes('right');
-    const frontOpen = !isFrontClosed;
-    const backOpen = !isBackClosed;
-    const leftOpen = !isLeftClosed;
-    const rightOpen = !isRightClosed;
 
-    // Prefer an open side that lies outside the bay interior (i.e., in an aisle) to avoid crossing bay floor.
-    const candidateSides: Array<{ side: 'front'|'back'|'left'|'right', x: number, z: number, open: boolean }> = [];
-    const offset = CLEARANCE_CELLS + 0.1;
-    // front
-    candidateSides.push({ side: 'front', x: shelfCenterX, z: frontFaceZ + offset, open: frontOpen });
-    // back
-    candidateSides.push({ side: 'back', x: shelfCenterX, z: backFaceZ - offset, open: backOpen });
-    // right
-    candidateSides.push({ side: 'right', x: shelfRightX + offset, z: shelfCenterZ, open: rightOpen });
-    // left
-    candidateSides.push({ side: 'left', x: shelfLeftX - offset, z: shelfCenterZ, open: leftOpen });
-
-    // Check which candidate points are outside the bay interior rectangle
-    const insideBay = (x: number, z: number) => {
-      return x >= targetBay!.column && x <= (targetBay!.column + targetBay!.width) && z >= targetBay!.row && z <= (targetBay!.row + targetBay!.depth);
-    };
-
-    // Prefer open sides that are outside bay interior; if multiple, pick nearest to endpoint; else fallback to best reachable point logic below
-    let chosen: typeof candidateSides[0] | null = null;
-    let bestDist = Infinity;
-    for (const c of candidateSides) {
-      if (!c.open) continue;
-      const cInside = insideBay(c.x, c.z);
-      if (!cInside) {
-        const d = Math.hypot(end.x - c.x, end.z - c.z);
-        if (d < bestDist) { bestDist = d; chosen = c; }
-      }
-    }
-
-    let approach: 'front' | 'back' | 'left' | 'right' = 'front';
-    if (chosen) approach = chosen.side;
-    else {
-      // Fallback: choose by openness and width heuristics similar to original behavior
-      const isWideShelf = uW > shelfDepth;
-      if (isWideShelf) {
-        if (frontOpen) approach = 'front'; else if (backOpen) approach = 'back'; else if (rightOpen) approach = 'right'; else if (leftOpen) approach = 'left';
-      } else {
-        if (rightOpen) approach = 'right'; else if (leftOpen) approach = 'left'; else if (frontOpen) approach = 'front'; else if (backOpen) approach = 'back';
-      }
-    }
+    const approach = optimalShelfApproach.approach;
     const EPS = 0.01; // tiny epsilon to sit exactly on the face without entering
+
     let candX = shelfCenterX;
     let candZ = shelfCenterZ;
     if (approach === 'front') candZ = frontFaceZ + (CLEARANCE_CELLS + 0.1);
@@ -560,21 +655,21 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     if (approach === 'left')  candX = shelfLeftX - (CLEARANCE_CELLS + 0.1);
 
     // Compute renderEnd on the exact face line (epsilon outward to remain outside)
-    let faceX = shelfCenterX, faceZ = shelfCenterZ;
+    let faceX = shelfCenterX; let faceZ = shelfCenterZ;
     if (approach === 'front') faceZ = frontFaceZ + EPS;
     if (approach === 'back')  faceZ = backFaceZ - EPS;
     if (approach === 'right') faceX = shelfRightX + EPS;
     if (approach === 'left')  faceX = shelfLeftX - EPS;
-    let dirX = 0, dirZ = 0;
+    let dirX = 0; let dirZ = 0;
     if (approach === 'front') dirZ = 1;
     if (approach === 'back')  dirZ = -1;
     if (approach === 'right') dirX = 1;
     if (approach === 'left')  dirX = -1;
-    let bestX = candX, bestZ = candZ;
+    let bestX = candX; let bestZ = candZ;
     for (let s = 0; s <= 24; s++) {
       const px = candX + dirX * s * 0.25;
       const pz = candZ + dirZ * s * 0.25;
-      const cx = Math.floor(px), cz = Math.floor(pz);
+      const cx = Math.floor(px); const cz = Math.floor(pz);
       if (cx >= 0 && cx < width && cz >= 0 && cz < depth && grid[cx][cz]) { bestX = px; bestZ = pz; break; }
     }
     correctedGoal = { x: Math.max(0, Math.min(bestX, width - 1)), z: Math.max(0, Math.min(bestZ, depth - 1)), floor };
