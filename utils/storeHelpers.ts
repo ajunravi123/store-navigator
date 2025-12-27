@@ -254,3 +254,87 @@ export function getProductLocation(config: StoreConfig, product: { bayId?: strin
   return { zone, aisle, bay, shelf };
 }
 
+/**
+ * Calculate shelf positions based on bay shape
+ * Returns array of shelf positions with their world coordinates, rotation, and dimensions
+ */
+export function calculateShelfPositions(
+  bay: Bay
+): Array<{ 
+  worldX: number; 
+  worldZ: number; 
+  rotation: number; 
+  shelfWidth: number; 
+  shelfDepth: number;
+  localX: number;
+  localZ: number;
+}> {
+  const { shape = 'rectangle', width, depth, shelves, shelfSpacing = 0 } = bay;
+  const numShelves = shelves.length;
+  
+  if (numShelves === 0) return [];
+  
+  const positions: Array<{ 
+    worldX: number; 
+    worldZ: number; 
+    rotation: number; 
+    shelfWidth: number; 
+    shelfDepth: number;
+    localX: number;
+    localZ: number;
+  }> = [];
+  
+  const bayCenterX = bay.column + bay.width / 2;
+  const bayCenterZ = bay.row + bay.depth / 2;
+  
+  switch (shape) {
+    case 'circle': {
+      const radius = Math.min(width, depth) / 2 - 1;
+      const angleStep = (Math.PI * 2) / numShelves;
+      const circumference = 2 * Math.PI * radius;
+      const shelfWidth = Math.max(1.5, Math.min(3, circumference / numShelves - 0.5));
+      const shelfDepth = Math.min(width, depth) * 0.35;
+      
+      for (let i = 0; i < numShelves; i++) {
+        const angle = i * angleStep;
+        const localX = Math.cos(angle) * radius * 0.7;
+        const localZ = Math.sin(angle) * radius * 0.7;
+        const rotation = angle + Math.PI / 2; // Face outward
+        
+        positions.push({
+          worldX: bayCenterX + localX,
+          worldZ: bayCenterZ + localZ,
+          rotation,
+          shelfWidth,
+          shelfDepth,
+          localX,
+          localZ
+        });
+      }
+      break;
+    }
+    case 'rectangle':
+    default: {
+      const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
+      const availableWidth = width - totalSpacing;
+      const unitWidth = numShelves > 0 ? availableWidth / numShelves : width;
+      
+      for (let i = 0; i < numShelves; i++) {
+        const localX = -width / 2 + unitWidth / 2 + (i * (unitWidth + shelfSpacing));
+        positions.push({
+          worldX: bayCenterX + localX,
+          worldZ: bayCenterZ,
+          rotation: 0,
+          shelfWidth: Math.max(1, unitWidth - 0.4),
+          shelfDepth: depth - 0.5,
+          localX,
+          localZ: 0
+        });
+      }
+      break;
+    }
+  }
+  
+  return positions;
+}
+

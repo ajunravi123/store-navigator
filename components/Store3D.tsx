@@ -823,14 +823,103 @@ const AisleHighlight: React.FC<{ aisleId: string; config: StoreConfig; currentFl
   );
 };
 
+// Helper function to render bay support base based on shape
+const renderBaySupport = (shape: string, width: number, depth: number): React.ReactElement => {
+  const baseHeight = 0.1;
+  const baseY = -0.7;
+  
+  switch (shape) {
+    case 'circle': {
+      const radius = Math.min(width, depth) / 2;
+      return (
+        <mesh castShadow receiveShadow position={[0, baseY, 0]}>
+          <cylinderGeometry args={[radius, radius, baseHeight, 32]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.2} />
+        </mesh>
+      );
+    }
+    case 'rectangle':
+    default: {
+      return (
+        <mesh castShadow receiveShadow position={[0, baseY, 0]}>
+          <boxGeometry args={[width, baseHeight, depth]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.2} />
+        </mesh>
+      );
+    }
+  }
+};
+
+// Helper function to calculate shelf positions based on bay shape
+const calculateShelfPositions = (
+  shape: string,
+  numShelves: number,
+  width: number,
+  depth: number,
+  shelfSpacing: number
+): Array<{ x: number; z: number; rotation: number; shelfWidth: number; shelfDepth: number }> => {
+  if (numShelves === 0) return [];
+  
+  const positions: Array<{ x: number; z: number; rotation: number; shelfWidth: number; shelfDepth: number }> = [];
+  
+  switch (shape) {
+    case 'circle': {
+      // Circular arrangement: shelves arranged in a circle, facing outward
+      const radius = Math.min(width, depth) / 2 - 1; // Leave margin for shelf depth
+      const angleStep = (Math.PI * 2) / numShelves;
+      // Calculate optimal shelf width based on circumference
+      const circumference = 2 * Math.PI * radius;
+      const shelfWidth = Math.max(1.5, Math.min(3, circumference / numShelves - 0.5));
+      const shelfDepth = Math.min(width, depth) * 0.35; // Shallow depth for circular display
+      
+      for (let i = 0; i < numShelves; i++) {
+        const angle = i * angleStep;
+        const x = Math.cos(angle) * radius * 0.7;
+        const z = Math.sin(angle) * radius * 0.7;
+        const rotation = angle + Math.PI / 2; // Face outward (tangent to circle)
+        positions.push({
+          x,
+          z,
+          rotation,
+          shelfWidth: shelfWidth,
+          shelfDepth: shelfDepth
+        });
+      }
+      break;
+    }
+    case 'rectangle':
+    default: {
+      // Original rectangular layout: linear arrangement
+      const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
+      const availableWidth = width - totalSpacing;
+      const unitWidth = numShelves > 0 ? availableWidth / numShelves : width;
+      
+      for (let i = 0; i < numShelves; i++) {
+        const x = -width / 2 + unitWidth / 2 + (i * (unitWidth + shelfSpacing));
+        positions.push({
+          x,
+          z: 0,
+          rotation: 0, // Face forward
+          shelfWidth: Math.max(1, unitWidth - 0.4),
+          shelfDepth: depth - 0.5
+        });
+      }
+      break;
+    }
+  }
+  
+  return positions;
+};
+
 const BayComponent: React.FC<{ bay: Bay; aisleId: string | null; isTarget: boolean; targetProduct?: Product | null; disableFocus?: boolean }> = ({ bay, aisleId, isTarget, targetProduct, disableFocus }) => {
   const shelfSpacing = bay.shelfSpacing ?? 0; // Default spacing is 0
   const numShelves = bay.shelves.length;
-  const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1); // Total spacing between all shelves
-  const availableWidth = bay.width - totalSpacing; // Width available for shelves after spacing
-  const unitWidth = numShelves > 0 ? availableWidth / numShelves : bay.width;
+  const bayShape = bay.shape || 'rectangle'; // Default to rectangle
   const UNIT_HEIGHT = 2.2;
   const Y_SHIFT = 0.35;
+  
+  // Calculate shelf positions based on shape
+  const shelfPositions = calculateShelfPositions(bayShape, numShelves, bay.width, bay.depth, shelfSpacing);
 
   // Use aisle color for all shelves in this bay
   const aisleColor = aisleId ? getAisleColor(aisleId) : '#64748b';
@@ -865,34 +954,40 @@ const BayComponent: React.FC<{ bay: Bay; aisleId: string | null; isTarget: boole
 
   return (
     <group position={[bay.column + bay.width / 2, 0.75, bay.row + bay.depth / 2]}>
-      <mesh castShadow receiveShadow position={[0, -0.7, 0]}>
-        <boxGeometry args={[bay.width, 0.1, bay.depth]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.2} />
-      </mesh>
+      {/* Render bay support base based on shape */}
+      {renderBaySupport(bayShape, bay.width, bay.depth)}
+      
+      {/* Render shelves at calculated positions */}
       {bay.shelves.map((shelf, idx) => {
-        // Calculate position: start from left edge, add half unit width, then add spacing and unit width for each previous shelf
-        const xPos = -bay.width / 2 + unitWidth / 2 + (idx * (unitWidth + shelfSpacing));
+        const position = shelfPositions[idx] || shelfPositions[0] || { x: 0, z: 0, rotation: 0, shelfWidth: bay.width, shelfDepth: bay.depth };
         const frontConfig = getShelfConfig(shelf);
+        
+        // For circle bays, force all sides to be open (empty array)
+        const shelfClosedSides = bayShape === 'circle' ? [] : shelf.closedSides;
 
         return (
-          <group key={shelf.id} position={[xPos, Y_SHIFT, 0]}>
+          <group 
+            key={shelf.id} 
+            position={[position.x, Y_SHIFT, position.z]}
+            rotation={[0, position.rotation, 0]}
+          >
             <DetailedShelfUnit
-              width={unitWidth - 0.4}
+              width={position.shelfWidth}
               height={UNIT_HEIGHT}
-              depth={bay.depth - 0.5}
+              depth={position.shelfDepth}
               frontConfig={frontConfig}
               backConfig={undefined}
-              closedSides={shelf.closedSides}
+              closedSides={shelfClosedSides}
             />
 
             {/* Label - Show only on camera-facing side */}
             {frontConfig && (
               <CameraFacingLabel
                 shelfName={frontConfig.name}
-                width={unitWidth - 0.4}
-                depth={bay.depth - 0.5}
+                width={position.shelfWidth}
+                depth={position.shelfDepth}
                 height={UNIT_HEIGHT}
-                closedSides={shelf.closedSides}
+                closedSides={shelfClosedSides}
               />
             )}
           </group>
@@ -1160,22 +1255,33 @@ const ProductMarker: React.FC<{ product: Product; bay: Bay; type?: 'default' | '
     const shelfIndex = bay.shelves.findIndex(s => s.id === product.shelfId);
     const validShelfIndex = shelfIndex === -1 ? 0 : shelfIndex;
 
-    const numShelves = bay.shelves.length;
+    const bayShape = bay.shape || 'rectangle';
     const shelfSpacing = bay.shelfSpacing ?? 0;
-    const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
-    const availableWidth = bay.width - totalSpacing;
-    const unitWidth = numShelves > 0 ? availableWidth / numShelves : bay.width;
+    
+    // Use the same shelf position calculation as BayComponent
+    const shelfPositions = calculateShelfPositions(bayShape, bay.shelves.length, bay.width, bay.depth, shelfSpacing);
+    const shelfPosition = shelfPositions[validShelfIndex] || shelfPositions[0] || { 
+      x: 0, z: 0, rotation: 0, shelfWidth: bay.width, shelfDepth: bay.depth 
+    };
 
-    // X: Center of the specific shelf (matching BayComponent calculation)
-    // Bay group is centered at: bay.column + bay.width / 2
-    // Shelf position relative to center: -bay.width / 2 + unitWidth / 2 + (idx * (unitWidth + shelfSpacing))
-    // Absolute X = bay.column + unitWidth / 2 + (idx * (unitWidth + shelfSpacing))
-    const offsetX = bay.column + (unitWidth / 2) + (validShelfIndex * (unitWidth + shelfSpacing));
-    // Z: Products are displayed on the front side of each shelf
-    // Bay group is centered at: bay.row + bay.depth / 2
-    // Products are at: bay.depth / 2 - 0.25 (relative) + (bay.depth - 0.5) / 4
-    // Absolute Z = bay.row + bay.depth / 2 + ((bay.depth - 0.5) / 4)
-    const offsetZ = bay.row + bay.depth / 2 + ((bay.depth - 0.5) / 4);
+    // Calculate product position on the shelf
+    // Products are displayed on the front side of each shelf
+    // For rotated shelves, we need to account for the rotation
+    const bayCenterX = bay.column + bay.width / 2;
+    const bayCenterZ = bay.row + bay.depth / 2;
+    
+    // Shelf position relative to bay center
+    const shelfX = shelfPosition.x;
+    const shelfZ = shelfPosition.z;
+    
+    // Product offset from shelf center (on the front face)
+    // Front face is at +shelfDepth/2 in shelf's local space
+    const productOffsetX = Math.sin(shelfPosition.rotation) * (shelfPosition.shelfDepth / 2 - 0.25);
+    const productOffsetZ = Math.cos(shelfPosition.rotation) * (shelfPosition.shelfDepth / 2 - 0.25);
+    
+    // Absolute position
+    const offsetX = bayCenterX + shelfX + productOffsetX;
+    const offsetZ = bayCenterZ + shelfZ + productOffsetZ;
 
     return { x: offsetX, z: offsetZ };
   }, [bay, product]);
@@ -1342,14 +1448,17 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
         const shelfIdx = bay.shelves.findIndex(s => s.id === targetShelfId);
         const validIdx = shelfIdx === -1 ? 0 : shelfIdx;
 
-        const numShelves = bay.shelves.length;
+        const bayShape = bay.shape || 'rectangle';
         const shelfSpacing = bay.shelfSpacing ?? 0;
-        const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
-        const availableWidth = bay.width - totalSpacing;
-        const unitWidth = numShelves > 0 ? availableWidth / numShelves : bay.width;
+        const shelfPositions = calculateShelfPositions(bayShape, bay.shelves.length, bay.width, bay.depth, shelfSpacing);
+        const shelfPosition = shelfPositions[validIdx] || shelfPositions[0] || { 
+          x: 0, z: 0, rotation: 0, shelfWidth: bay.width, shelfDepth: bay.depth 
+        };
 
-        const x = bay.column + (unitWidth / 2) + (validIdx * (unitWidth + shelfSpacing));
-        const z = bay.row + bay.depth / 2;
+        const bayCenterX = bay.column + bay.width / 2;
+        const bayCenterZ = bay.row + bay.depth / 2;
+        const x = bayCenterX + shelfPosition.x;
+        const z = bayCenterZ + shelfPosition.z;
         point = new THREE.Vector3(x, 0, z);
       }
     } else if (selectedBay) {
@@ -1364,19 +1473,26 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
         point = new THREE.Vector3(centerX, 0, centerZ);
       }
     } else if (targetProduct && targetBay) {
-      // Focus on product shelf
+      // Focus on product shelf - use same calculation as ProductMarker
       const idx = targetBay.shelves.findIndex(s => s.id === targetProduct.shelfId);
       const validIdx = idx === -1 ? 0 : idx;
 
-      const numShelves = targetBay.shelves.length;
+      const bayShape = targetBay.shape || 'rectangle';
       const shelfSpacing = targetBay.shelfSpacing ?? 0;
-      const totalSpacing = shelfSpacing * Math.max(0, numShelves - 1);
-      const availableWidth = targetBay.width - totalSpacing;
-      const unitWidth = numShelves > 0 ? availableWidth / numShelves : targetBay.width;
+      const shelfPositions = calculateShelfPositions(bayShape, targetBay.shelves.length, targetBay.width, targetBay.depth, shelfSpacing);
+      const shelfPosition = shelfPositions[validIdx] || shelfPositions[0] || { 
+        x: 0, z: 0, rotation: 0, shelfWidth: targetBay.width, shelfDepth: targetBay.depth 
+      };
 
-      const x = targetBay.column + (unitWidth / 2) + (validIdx * (unitWidth + shelfSpacing));
-      const productZ = targetBay.row + targetBay.depth / 2 + ((targetBay.depth - 0.5) / 4);
-      const z = productZ + 0.3;
+      const bayCenterX = targetBay.column + targetBay.width / 2;
+      const bayCenterZ = targetBay.row + targetBay.depth / 2;
+      
+      // Product offset from shelf center (on the front face)
+      const productOffsetX = Math.sin(shelfPosition.rotation) * (shelfPosition.shelfDepth / 2 - 0.25);
+      const productOffsetZ = Math.cos(shelfPosition.rotation) * (shelfPosition.shelfDepth / 2 - 0.25);
+      
+      const x = bayCenterX + shelfPosition.x + productOffsetX;
+      const z = bayCenterZ + shelfPosition.z + productOffsetZ + 0.3;
 
       point = new THREE.Vector3(x, 0, z);
     }

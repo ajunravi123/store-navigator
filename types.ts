@@ -17,6 +17,7 @@ export interface Bay {
   shelves: Shelf[];
   levelCount?: number;
   shelfSpacing?: number; // Distance between shelves in the bay (default: 0)
+  shape?: 'rectangle' | 'circle'; // Bay support shape (default: 'rectangle')
 }
 
 export interface Aisle {

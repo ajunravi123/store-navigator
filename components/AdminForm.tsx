@@ -185,7 +185,8 @@ const AdminForm: React.FC<AdminFormProps> = ({
             column: 10,
             width: 6,
             depth: 4,
-            shelves: [{ id: `${newBayId}-A`, name: 'Shelf A' }]
+            shelves: [{ id: `${newBayId}-A`, name: 'Shelf A' }],
+            shape: 'rectangle' // Default shape
         };
         
         const zones = storeConfig.zones.map(z => 
@@ -725,6 +726,31 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                     <span className="text-[9px] text-slate-400 font-medium mt-1 block">Distance between shelves within this bay</span>
                                                 </div>
 
+                                                <div>
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase mb-1.5 block">Bay Shape</span>
+                                                    <select
+                                                        value={bay.shape || 'rectangle'}
+                                                        onChange={(e) => {
+                                                            const newShape = e.target.value as 'rectangle' | 'circle';
+                                                            // If changing to circle, set all shelves to have all sides open (empty array)
+                                                            if (newShape === 'circle') {
+                                                                const updatedShelves = bay.shelves.map(shelf => ({
+                                                                    ...shelf,
+                                                                    closedSides: [] // Empty array means all sides open
+                                                                }));
+                                                                updateBay(bay.id, { shape: newShape, shelves: updatedShelves });
+                                                            } else {
+                                                                updateBay(bay.id, { shape: newShape });
+                                                            }
+                                                        }}
+                                                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
+                                                    >
+                                                        <option value="rectangle">Rectangle</option>
+                                                        <option value="circle">Circle</option>
+                                                    </select>
+                                                    <span className="text-[9px] text-slate-400 font-medium mt-1 block">Shape of the bay support base</span>
+                                                </div>
+
                                                 <div className="space-y-3">
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Shelves</span>
@@ -734,32 +760,40 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                                 const id = `${bay.id}-${String.fromCodePoint(65 + idx)}`;
                                                                 const name = `Shelf ${String.fromCodePoint(65 + idx)}`;
 
-                                                                // Compute default closed sides based on adjacent bays and neighboring shelves
-                                                                const adjacent = getAdjacentSidesForBay(bay, storeConfig);
-                                                                const baseSet = new Set<string>();
-
-                                                                if (adjacent.left) baseSet.add('left');
-                                                                if (adjacent.right) baseSet.add('right');
-                                                                if (adjacent.front) baseSet.add('front');
-                                                                if (adjacent.back) baseSet.add('back');
-
-                                                                // If there's a left neighbor shelf within the same bay, the new shelf's left side faces a shelf
-                                                                if (idx > 0) baseSet.add('left');
-
+                                                                const isCircle = bay.shape === 'circle';
+                                                                
+                                                                // For circle bays, all sides must be open (empty array)
+                                                                // For rectangle bays, compute default closed sides based on adjacent bays and neighboring shelves
                                                                 let newClosed: ('left'|'right'|'front'|'back')[] | undefined;
-                                                                if (baseSet.size === 0) {
-                                                                    newClosed = undefined; // keep default (back closed implicitly)
-                                                                } else if (baseSet.size === 1 && baseSet.has('back')) {
-                                                                    newClosed = undefined; // only back => keep default
+                                                                
+                                                                if (isCircle) {
+                                                                    newClosed = []; // All sides open for circle
                                                                 } else {
-                                                                    newClosed = Array.from(baseSet) as any;
+                                                                    const adjacent = getAdjacentSidesForBay(bay, storeConfig);
+                                                                    const baseSet = new Set<string>();
+
+                                                                    if (adjacent.left) baseSet.add('left');
+                                                                    if (adjacent.right) baseSet.add('right');
+                                                                    if (adjacent.front) baseSet.add('front');
+                                                                    if (adjacent.back) baseSet.add('back');
+
+                                                                    // If there's a left neighbor shelf within the same bay, the new shelf's left side faces a shelf
+                                                                    if (idx > 0) baseSet.add('left');
+
+                                                                    if (baseSet.size === 0) {
+                                                                        newClosed = undefined; // keep default (back closed implicitly)
+                                                                    } else if (baseSet.size === 1 && baseSet.has('back')) {
+                                                                        newClosed = undefined; // only back => keep default
+                                                                    } else {
+                                                                        newClosed = Array.from(baseSet) as any;
+                                                                    }
                                                                 }
 
                                                                 const newShelf = newClosed === undefined ? { id, name } : { id, name, closedSides: newClosed };
 
-                                                                // Ensure the neighbor's facing side is closed as well (both sides closed)
+                                                                // Ensure the neighbor's facing side is closed as well (both sides closed) - only for rectangle
                                                                 const newShelves = bay.shelves.map((s, i) => {
-                                                                    if (i === idx - 1 && idx > 0) {
+                                                                    if (!isCircle && i === idx - 1 && idx > 0) {
                                                                         const existing = s.closedSides;
                                                                         // Always add the right side to the previous shelf so both sides are closed
                                                                         const prevSet = new Set<string>(existing === undefined ? ['back'] : existing);
@@ -819,17 +853,24 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                             <div className="flex gap-2 items-center pl-1">
                                                                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Closed Sides:</span>
                                                                 {(['left', 'right', 'front', 'back'] as const).map((side) => {
-                                                                    // Back side is checked by default (when closedSides is undefined)
+                                                                    const isCircle = bay.shape === 'circle';
+                                                                    // For circle bays, all sides are always open (empty array)
+                                                                    // Back side is checked by default (when closedSides is undefined) for rectangle
                                                                     // For other sides, checked only if explicitly in closedSides
-                                                                    const isChecked = side === 'back'
-                                                                        ? (shelf.closedSides === undefined || shelf.closedSides.includes('back'))
-                                                                        : (shelf.closedSides?.includes(side) || false);
+                                                                    const isChecked = isCircle 
+                                                                        ? false // Circle bays always have all sides open
+                                                                        : (side === 'back'
+                                                                            ? (shelf.closedSides === undefined || shelf.closedSides.includes('back'))
+                                                                            : (shelf.closedSides?.includes(side) || false));
                                                                     return (
-                                                                        <label key={side} className="flex items-center gap-1 cursor-pointer">
+                                                                        <label key={side} className={`flex items-center gap-1 ${isCircle ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                                                                             <input
                                                                                 type="checkbox"
                                                                                 checked={isChecked}
+                                                                                disabled={isCircle}
                                                                                 onChange={(e) => {
+                                                                                    if (isCircle) return; // Prevent changes for circle bays
+                                                                                    
                                                                                     const currentClosedSides = shelf.closedSides || [];
                                                                                     let newClosedSides: ('left' | 'right' | 'front' | 'back')[];
                                                                                     
@@ -859,9 +900,9 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                                                     }
                                                                                     updateBay(bay.id, { shelves: newShelves });
                                                                                 }}
-                                                                                className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                                                className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                                                             />
-                                                                            <span className="text-[9px] font-bold text-slate-600 uppercase">{side}</span>
+                                                                            <span className={`text-[9px] font-bold uppercase ${isCircle ? 'text-slate-400' : 'text-slate-600'}`}>{side}</span>
                                                                         </label>
                                                                     );
                                                                 })}

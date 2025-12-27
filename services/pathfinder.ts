@@ -1,6 +1,6 @@
 
 import { PathNode, StoreConfig } from '../types';
-import { getAllBays } from '../utils/storeHelpers';
+import { getAllBays, calculateShelfPositions } from '../utils/storeHelpers';
 
 interface GridNode {
   x: number;
@@ -315,54 +315,140 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
   // Pre-compute optimal shelf opening configuration before building the grid
   let optimalShelfApproach: { approach: 'front' | 'back' | 'left' | 'right'; closedSides: ('left' | 'right' | 'front' | 'back')[] } | undefined;
   if (targetBay) {
-    const sp = targetBay.shelfSpacing ?? 0;
+    const bayShape = targetBay.shape || 'rectangle';
     const ns = targetBay.shelves.length;
-    const totalSp = sp * Math.max(0, ns - 1);
-    const availW = targetBay.width - totalSp;
-    const uW = ns > 0 ? availW / ns : targetBay.width;
-    const baseCenterX = targetBay.column + uW / 2;
-    const stepX = uW + sp;
-    let targetShelfIdx = Math.round((end.x - baseCenterX) / (stepX || 1));
-    targetShelfIdx = Math.max(0, Math.min(ns - 1, targetShelfIdx));
     
-    const shelfCenterX = targetBay.column + (uW / 2) + (targetShelfIdx * (uW + sp));
-    const shelfLeftX = shelfCenterX - uW / 2;
-    const shelfRightX = shelfCenterX + uW / 2;
-    const shelfCenterZ = targetBay.row + targetBay.depth / 2;
-    const shelfDepth = targetBay.depth - 0.5;
-    const frontFaceZ = shelfCenterZ + shelfDepth / 2;
-    const backFaceZ = shelfCenterZ - shelfDepth / 2;
-
-    // Determine which sides are currently open
+    // Calculate shelf positions based on bay shape
+    const shelfPositions = calculateShelfPositions(targetBay);
+    
+    // Find target shelf index based on endpoint position
+    let targetShelfIdx = 0;
+    if (bayShape === 'circle') {
+      // For circle, find shelf closest to endpoint
+      let minDist = Infinity;
+      for (let i = 0; i < shelfPositions.length; i++) {
+        const dist = Math.hypot(end.x - shelfPositions[i].worldX, end.z - shelfPositions[i].worldZ);
+        if (dist < minDist) {
+          minDist = dist;
+          targetShelfIdx = i;
+        }
+      }
+    } else {
+      // Rectangle: use X position to find shelf
+      const sp = targetBay.shelfSpacing ?? 0;
+      const totalSp = sp * Math.max(0, ns - 1);
+      const availW = targetBay.width - totalSp;
+      const uW = ns > 0 ? availW / ns : targetBay.width;
+      const baseCenterX = targetBay.column + uW / 2;
+      const stepX = uW + sp;
+      targetShelfIdx = Math.round((end.x - baseCenterX) / (stepX || 1));
+      targetShelfIdx = Math.max(0, Math.min(ns - 1, targetShelfIdx));
+    }
+    
+    const shelfPos = shelfPositions[targetShelfIdx];
     const closed = targetBay.shelves[targetShelfIdx]?.closedSides ?? [];
     const frontOpen = !closed.includes('front');
     const backOpen = !closed.includes('back') && closed.length > 0;
     const leftOpen = !closed.includes('left');
     const rightOpen = !closed.includes('right');
 
-    // Calculate lowest distance from bay floor edges to destination point
+    // Calculate distance from bay edge to shelf face point (for choosing best approach)
     const calculateEdgeDistance = (side: 'front' | 'back' | 'left' | 'right'): number => {
-      let closestPoint = { x: end.x, z: end.z };
-      
-      if (side === 'front') {
-        closestPoint.x = Math.max(targetBay.column, Math.min(targetBay.column + targetBay.width, end.x));
-        closestPoint.z = frontFaceZ;
-      } else if (side === 'back') {
-        closestPoint.x = Math.max(targetBay.column, Math.min(targetBay.column + targetBay.width, end.x));
-        closestPoint.z = backFaceZ;
-      } else if (side === 'left') {
-        closestPoint.x = shelfLeftX;
-        closestPoint.z = Math.max(targetBay.row, Math.min(targetBay.row + targetBay.depth, end.z));
-      } else if (side === 'right') {
-        closestPoint.x = shelfRightX;
-        closestPoint.z = Math.max(targetBay.row, Math.min(targetBay.row + targetBay.depth, end.z));
+      if (bayShape === 'circle') {
+        // For circle bays, calculate distance from bay edge (circle perimeter) to shelf face
+        const rotation = shelfPos.rotation;
+        const shelfWorldX = shelfPos.worldX;
+        const shelfWorldZ = shelfPos.worldZ;
+        const shelfWidth = shelfPos.shelfWidth;
+        const shelfDepth = shelfPos.shelfDepth;
+        
+        const bayCenterX = targetBay.column + targetBay.width / 2;
+        const bayCenterZ = targetBay.row + targetBay.depth / 2;
+        const bayRadius = Math.min(targetBay.width, targetBay.depth) / 2;
+        
+        const cosR = Math.cos(rotation);
+        const sinR = Math.sin(rotation);
+        
+        // Calculate shelf face position
+        let faceX: number, faceZ: number;
+        if (side === 'front') {
+          faceX = shelfWorldX + (shelfDepth / 2) * sinR;
+          faceZ = shelfWorldZ + (shelfDepth / 2) * cosR;
+        } else if (side === 'back') {
+          faceX = shelfWorldX - (shelfDepth / 2) * sinR;
+          faceZ = shelfWorldZ - (shelfDepth / 2) * cosR;
+        } else if (side === 'left') {
+          faceX = shelfWorldX - (shelfWidth / 2) * cosR;
+          faceZ = shelfWorldZ + (shelfWidth / 2) * sinR;
+        } else {
+          faceX = shelfWorldX + (shelfWidth / 2) * cosR;
+          faceZ = shelfWorldZ - (shelfWidth / 2) * sinR;
+        }
+        
+        // Distance from bay edge (circle perimeter) to shelf face
+        const dx = faceX - bayCenterX;
+        const dz = faceZ - bayCenterZ;
+        const distFromCenter = Math.hypot(dx, dz);
+        
+        if (distFromCenter === 0) return bayRadius; // At center, distance is radius
+        
+        // Closest point on circle perimeter to the shelf face
+        const closestX = bayCenterX + (dx / distFromCenter) * bayRadius;
+        const closestZ = bayCenterZ + (dz / distFromCenter) * bayRadius;
+        
+        // Distance from shelf face to closest point on circle perimeter
+        return Math.hypot(faceX - closestX, faceZ - closestZ);
+      } else {
+        // Rectangle bay: original logic - calculate distance from endpoint to shelf face
+        const sp = targetBay.shelfSpacing ?? 0;
+        const totalSp = sp * Math.max(0, ns - 1);
+        const availW = targetBay.width - totalSp;
+        const uW = ns > 0 ? availW / ns : targetBay.width;
+        const shelfCenterX = targetBay.column + (uW / 2) + (targetShelfIdx * (uW + sp));
+        const shelfLeftX = shelfCenterX - uW / 2;
+        const shelfRightX = shelfCenterX + uW / 2;
+        const shelfCenterZ = targetBay.row + targetBay.depth / 2;
+        const shelfDepth = targetBay.depth - 0.5;
+        const frontFaceZ = shelfCenterZ + shelfDepth / 2;
+        const backFaceZ = shelfCenterZ - shelfDepth / 2;
+        
+        let closestPoint = { x: end.x, z: end.z };
+        
+        if (side === 'front') {
+          closestPoint.x = Math.max(targetBay.column, Math.min(targetBay.column + targetBay.width, end.x));
+          closestPoint.z = frontFaceZ;
+        } else if (side === 'back') {
+          closestPoint.x = Math.max(targetBay.column, Math.min(targetBay.column + targetBay.width, end.x));
+          closestPoint.z = backFaceZ;
+        } else if (side === 'left') {
+          closestPoint.x = shelfLeftX;
+          closestPoint.z = Math.max(targetBay.row, Math.min(targetBay.row + targetBay.depth, end.z));
+        } else if (side === 'right') {
+          closestPoint.x = shelfRightX;
+          closestPoint.z = Math.max(targetBay.row, Math.min(targetBay.row + targetBay.depth, end.z));
+        }
+        
+        return Math.hypot(end.x - closestPoint.x, end.z - closestPoint.z);
       }
-      
-      return Math.hypot(end.x - closestPoint.x, end.z - closestPoint.z);
     };
 
     // Check if approach side is blocked by other shelves in the same bay
     const isSideBlockedByOtherShelves = (side: 'front' | 'back' | 'left' | 'right'): boolean => {
+      // For circle bays, blocking is less relevant due to circular arrangement
+      // Skip blocking check for circle bays
+      if (bayShape === 'circle') {
+        return false;
+      }
+      
+      // Rectangle bay blocking logic
+      const sp = targetBay.shelfSpacing ?? 0;
+      const totalSp = sp * Math.max(0, ns - 1);
+      const availW = targetBay.width - totalSp;
+      const uW = ns > 0 ? availW / ns : targetBay.width;
+      const shelfCenterX = targetBay.column + (uW / 2) + (targetShelfIdx * (uW + sp));
+      const shelfLeftX = shelfCenterX - uW / 2;
+      const shelfRightX = shelfCenterX + uW / 2;
+      
       // Check all other shelves in the same bay
       for (let i = 0; i < targetBay.shelves.length; i++) {
         if (i === targetShelfIdx) continue; // Skip the target shelf itself
@@ -408,12 +494,28 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
     ];
 
     // Calculate side lengths for preference
-    const sideLengths: Record<'front' | 'back' | 'left' | 'right', number> = {
-      front: uW,      // Width of shelf for front/back access
-      back: uW,       // Width of shelf for front/back access
-      left: shelfDepth,   // Depth of shelf for left/right access
-      right: shelfDepth   // Depth of shelf for left/right access
-    };
+    let sideLengths: Record<'front' | 'back' | 'left' | 'right', number>;
+    if (bayShape === 'circle') {
+      sideLengths = {
+        front: shelfPos.shelfWidth,      // Width of shelf for front/back access
+        back: shelfPos.shelfWidth,       // Width of shelf for front/back access
+        left: shelfPos.shelfDepth,   // Depth of shelf for left/right access
+        right: shelfPos.shelfDepth   // Depth of shelf for left/right access
+      };
+    } else {
+      // Rectangle bay: use original calculations
+      const sp = targetBay.shelfSpacing ?? 0;
+      const totalSp = sp * Math.max(0, ns - 1);
+      const availW = targetBay.width - totalSp;
+      const uW = ns > 0 ? availW / ns : targetBay.width;
+      const shelfDepth = targetBay.depth - 0.5;
+      sideLengths = {
+        front: uW,      // Width of shelf for front/back access
+        back: uW,       // Width of shelf for front/back access
+        left: shelfDepth,   // Depth of shelf for left/right access
+        right: shelfDepth   // Depth of shelf for left/right access
+      };
+    }
 
     const openSidesByDistance = sideDistances
       .filter(s => s.open && !isSideBlockedByOtherShelves(s.side))
@@ -430,7 +532,7 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       approach = openSidesByDistance[0].side;
     } else {
       // Fallback if all sides closed or blocked: prefer longer sides with openness heuristics
-      const isWideShelf = uW > shelfDepth;
+      const isWideShelf = shelfPos.shelfWidth > shelfPos.shelfDepth;
       
       // For wide shelves, prefer front/back (longer sides for access)
       // For deep shelves, prefer left/right (longer sides for access)
@@ -479,21 +581,40 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
 
     // Block individual shelves (not the entire bay) to allow paths through gaps
     // Removed space checking - paths will always be generated even through narrow spaces
-    // Determine which shelf index is targeted for this bay based on endpoint X
+    // Determine which shelf index is targeted for this bay
     let targetShelfIdxForBay = -1;
     if (targetBay && targetBay.id === bay.id) {
-      const shelfSpacingForIdx = bay.shelfSpacing ?? 0;
-      const numShelvesForIdx = bay.shelves.length;
-      const totalSpacingForIdx = shelfSpacingForIdx * Math.max(0, numShelvesForIdx - 1);
-      const availableWidthForIdx = bay.width - totalSpacingForIdx;
-      const unitWidthForIdx = numShelvesForIdx > 0 ? availableWidthForIdx / numShelvesForIdx : bay.width;
-      // Compute nearest shelf section center index from endpoint X
-      const baseCenterX = bay.column + unitWidthForIdx / 2;
-      const stepX = unitWidthForIdx + shelfSpacingForIdx;
-      let roughIdx = Math.round((end.x - baseCenterX) / (stepX || 1));
-      roughIdx = Math.max(0, Math.min(numShelvesForIdx - 1, roughIdx));
-      targetShelfIdxForBay = roughIdx;
+      const bayShape = bay.shape || 'rectangle';
+      const shelfPositions = calculateShelfPositions(bay);
+      
+      if (bayShape === 'circle') {
+        // For circle, find shelf closest to endpoint
+        let minDist = Infinity;
+        for (let i = 0; i < shelfPositions.length; i++) {
+          const dist = Math.hypot(end.x - shelfPositions[i].worldX, end.z - shelfPositions[i].worldZ);
+          if (dist < minDist) {
+            minDist = dist;
+            targetShelfIdxForBay = i;
+          }
+        }
+      } else {
+        // Rectangle: use X position to find shelf
+        const shelfSpacingForIdx = bay.shelfSpacing ?? 0;
+        const numShelvesForIdx = bay.shelves.length;
+        const totalSpacingForIdx = shelfSpacingForIdx * Math.max(0, numShelvesForIdx - 1);
+        const availableWidthForIdx = bay.width - totalSpacingForIdx;
+        const unitWidthForIdx = numShelvesForIdx > 0 ? availableWidthForIdx / numShelvesForIdx : bay.width;
+        const baseCenterX = bay.column + unitWidthForIdx / 2;
+        const stepX = unitWidthForIdx + shelfSpacingForIdx;
+        let roughIdx = Math.round((end.x - baseCenterX) / (stepX || 1));
+        roughIdx = Math.max(0, Math.min(numShelvesForIdx - 1, roughIdx));
+        targetShelfIdxForBay = roughIdx;
+      }
     }
+
+    const bayShape = bay.shape || 'rectangle';
+    // Only calculate shelf positions for circle bays (rectangle uses original calculations)
+    const shelfPositions = bayShape === 'circle' ? calculateShelfPositions(bay) : null;
 
     bay.shelves.forEach((shelf, idx) => {
       // Determine which sides should be closed for this shelf
@@ -505,29 +626,62 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
         closedSides = optimalShelfApproach.closedSides;
       }
       
-      // Calculate shelf position
-      const shelfCenterX = bay.column + (unitWidth / 2) + (idx * (unitWidth + shelfSpacing));
-      const shelfLeftX = shelfCenterX - unitWidth / 2;
-      const shelfRightX = shelfCenterX + unitWidth / 2;
-
-      // Calculate exact shelf face positions (matching App.tsx calculation)
-      const shelfCenterZ = bay.row + bay.depth / 2;
-      const shelfDepth = bay.depth - 0.5;
-      const frontFaceZ = shelfCenterZ + shelfDepth / 2;
-      const backFaceZ = shelfCenterZ - shelfDepth / 2;
-
+      const shelfPos = shelfPositions ? shelfPositions[idx] : null;
+      
       // Block the shelf itself (the physical shelf unit) - STRICTLY block interior
-      // Block everything from backFaceZ to frontFaceZ (the shelf interior)
-      // Endpoint will be safely away (0.8 units) from the shelf face
       const buffer = 0.5; // Increased buffer to create a safety margin
       
-      for (let x = Math.floor(shelfLeftX - buffer); x <= Math.floor(shelfRightX + buffer); x++) {
-        // Block entire shelf depth (from backFaceZ to frontFaceZ)
-        for (let z = Math.floor(backFaceZ - buffer); z <= Math.floor(frontFaceZ + buffer); z++) {
-          if (x < 0 || x >= width || z < 0 || z >= depth) continue;
-          // No endpoint overrides inside shelf interior; always block
-
-          grid[x][z] = false; // Block shelf interior - always block non-target shelves
+      if (bayShape === 'circle' && shelfPos) {
+        // For circle bays, block shelf area based on rotation
+        const rotation = shelfPos.rotation;
+        const cosR = Math.cos(rotation);
+        const sinR = Math.sin(rotation);
+        const shelfWidth = shelfPos.shelfWidth;
+        const shelfDepth = shelfPos.shelfDepth;
+        const centerX = shelfPos.worldX;
+        const centerZ = shelfPos.worldZ;
+        
+        // Calculate bounding box of rotated shelf
+        const halfWidth = shelfWidth / 2;
+        const halfDepth = shelfDepth / 2;
+        
+        // Calculate corner positions
+        const corners = [
+          { x: centerX - halfWidth * cosR - halfDepth * sinR, z: centerZ + halfWidth * sinR - halfDepth * cosR },
+          { x: centerX + halfWidth * cosR - halfDepth * sinR, z: centerZ - halfWidth * sinR - halfDepth * cosR },
+          { x: centerX + halfWidth * cosR + halfDepth * sinR, z: centerZ - halfWidth * sinR + halfDepth * cosR },
+          { x: centerX - halfWidth * cosR + halfDepth * sinR, z: centerZ + halfWidth * sinR + halfDepth * cosR }
+        ];
+        
+        const minX = Math.min(...corners.map(c => c.x)) - buffer;
+        const maxX = Math.max(...corners.map(c => c.x)) + buffer;
+        const minZ = Math.min(...corners.map(c => c.z)) - buffer;
+        const maxZ = Math.max(...corners.map(c => c.z)) + buffer;
+        
+        // Block grid cells within the shelf bounds
+        for (let x = Math.floor(minX); x <= Math.floor(maxX); x++) {
+          for (let z = Math.floor(minZ); z <= Math.floor(maxZ); z++) {
+            if (x < 0 || x >= width || z < 0 || z >= depth) continue;
+            
+            // Check if point is inside rotated rectangle (simplified: use bounding box)
+            grid[x][z] = false; // Block shelf interior
+          }
+        }
+      } else {
+        // Rectangle bay logic (original)
+        const shelfCenterX = bay.column + (unitWidth / 2) + (idx * (unitWidth + shelfSpacing));
+        const shelfLeftX = shelfCenterX - unitWidth / 2;
+        const shelfRightX = shelfCenterX + unitWidth / 2;
+        const shelfCenterZ = bay.row + bay.depth / 2;
+        const shelfDepth = bay.depth - 0.5;
+        const frontFaceZ = shelfCenterZ + shelfDepth / 2;
+        const backFaceZ = shelfCenterZ - shelfDepth / 2;
+        
+        for (let x = Math.floor(shelfLeftX - buffer); x <= Math.floor(shelfRightX + buffer); x++) {
+          for (let z = Math.floor(backFaceZ - buffer); z <= Math.floor(frontFaceZ + buffer); z++) {
+            if (x < 0 || x >= width || z < 0 || z >= depth) continue;
+            grid[x][z] = false; // Block shelf interior
+          }
         }
       }
       
@@ -537,7 +691,16 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
       // Reduced blocking for closed faces - allow paths through narrow spaces
       // Only block immediate area around closed faces, not extended blocking zones
       // Skip closed face blocking for target shelf - endpoint area will handle it
-      if (!isTargetShelf) {
+      if (!isTargetShelf && bayShape === 'rectangle') {
+        // Rectangle bay closed face blocking (original logic)
+        const shelfCenterX = bay.column + (unitWidth / 2) + (idx * (unitWidth + shelfSpacing));
+        const shelfLeftX = shelfCenterX - unitWidth / 2;
+        const shelfRightX = shelfCenterX + unitWidth / 2;
+        const shelfCenterZ = bay.row + bay.depth / 2;
+        const shelfDepth = bay.depth - 0.5;
+        const frontFaceZ = shelfCenterZ + shelfDepth / 2;
+        const backFaceZ = shelfCenterZ - shelfDepth / 2;
+        
         if (closedSides.includes('front')) {
           // Only block minimal area in front of closed front face
           for (let x = Math.floor(shelfLeftX - 0.3); x <= Math.floor(shelfRightX + 0.3); x++) {
@@ -581,6 +744,7 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
           }
         }
       }
+      // For circle bays, skip closed face blocking - circular arrangement makes it less critical
     });
 
     // Ensure aisle areas around bay remain accessible for better path routing
@@ -644,53 +808,139 @@ const runAStar = (config: StoreConfig, floor: number, start: PathNode, end: Path
   let correctedGoal: PathNode = { ...end, floor };
   let renderEnd: PathNode = { ...end, floor };
   if (targetBay && optimalShelfApproach) {
-    const sp = targetBay.shelfSpacing ?? 0;
-    const ns = targetBay.shelves.length;
-    const totalSp = sp * Math.max(0, ns - 1);
-    const availW = targetBay.width - totalSp;
-    const uW = ns > 0 ? availW / ns : targetBay.width;
-    const baseCenterX = targetBay.column + uW / 2;
-    const stepX = uW + sp;
-    let idx = Math.round((end.x - baseCenterX) / (stepX || 1));
-    idx = Math.max(0, Math.min(ns - 1, idx));
-    const shelfCenterX = targetBay.column + (uW / 2) + (idx * (uW + sp));
-    const shelfLeftX = shelfCenterX - uW / 2;
-    const shelfRightX = shelfCenterX + uW / 2;
-    const shelfCenterZ = targetBay.row + targetBay.depth / 2;
-    const shelfDepth = targetBay.depth - 0.5;
-    const frontFaceZ = shelfCenterZ + shelfDepth / 2;
-    const backFaceZ = shelfCenterZ - shelfDepth / 2;
-
+    const bayShape = targetBay.shape || 'rectangle';
     const approach = optimalShelfApproach.approach;
     const EPS = 0.01; // tiny epsilon to sit exactly on the face without entering
+    const safeDistance = CLEARANCE_CELLS + 0.1;
 
-    let candX = shelfCenterX;
-    let candZ = shelfCenterZ;
-    if (approach === 'front') candZ = frontFaceZ + (CLEARANCE_CELLS + 0.1);
-    if (approach === 'back')  candZ = backFaceZ - (CLEARANCE_CELLS + 0.1);
-    if (approach === 'right') candX = shelfRightX + (CLEARANCE_CELLS + 0.1);
-    if (approach === 'left')  candX = shelfLeftX - (CLEARANCE_CELLS + 0.1);
+    if (bayShape === 'circle') {
+      // Circle bay endpoint positioning
+      const shelfPositions = calculateShelfPositions(targetBay);
+      // Find target shelf index (same logic as earlier)
+      let targetShelfIdx = 0;
+      let minDist = Infinity;
+      for (let i = 0; i < shelfPositions.length; i++) {
+        const dist = Math.hypot(end.x - shelfPositions[i].worldX, end.z - shelfPositions[i].worldZ);
+        if (dist < minDist) {
+          minDist = dist;
+          targetShelfIdx = i;
+        }
+      }
+      
+      const shelfPos = shelfPositions[targetShelfIdx];
+      const rotation = shelfPos.rotation;
+      const shelfWorldX = shelfPos.worldX;
+      const shelfWorldZ = shelfPos.worldZ;
+      const shelfWidth = shelfPos.shelfWidth;
+      const shelfDepth = shelfPos.shelfDepth;
+      
+      const cosR = Math.cos(rotation);
+      const sinR = Math.sin(rotation);
+      
+      // Calculate endpoint position on the chosen approach side
+      let candX: number, candZ: number, faceX: number, faceZ: number, dirX: number, dirZ: number;
+      
+      if (approach === 'front') {
+        faceX = shelfWorldX + (shelfDepth / 2) * sinR;
+        faceZ = shelfWorldZ + (shelfDepth / 2) * cosR;
+        candX = faceX + safeDistance * sinR;
+        candZ = faceZ + safeDistance * cosR;
+        dirX = sinR;
+        dirZ = cosR;
+      } else if (approach === 'back') {
+        faceX = shelfWorldX - (shelfDepth / 2) * sinR;
+        faceZ = shelfWorldZ - (shelfDepth / 2) * cosR;
+        candX = faceX - safeDistance * sinR;
+        candZ = faceZ - safeDistance * cosR;
+        dirX = -sinR;
+        dirZ = -cosR;
+      } else if (approach === 'left') {
+        faceX = shelfWorldX - (shelfWidth / 2) * cosR;
+        faceZ = shelfWorldZ + (shelfWidth / 2) * sinR;
+        candX = faceX - safeDistance * cosR;
+        candZ = faceZ + safeDistance * sinR;
+        dirX = -cosR;
+        dirZ = sinR;
+      } else {
+        faceX = shelfWorldX + (shelfWidth / 2) * cosR;
+        faceZ = shelfWorldZ - (shelfWidth / 2) * sinR;
+        candX = faceX + safeDistance * cosR;
+        candZ = faceZ - safeDistance * sinR;
+        dirX = cosR;
+        dirZ = -sinR;
+      }
+      
+      // Adjust renderEnd to be epsilon outside the face
+      renderEnd = { 
+        x: Math.max(0, Math.min(faceX + EPS * dirX, width - 1)), 
+        z: Math.max(0, Math.min(faceZ + EPS * dirZ, depth - 1)), 
+        floor 
+      };
+      
+      // Find best free cell for correctedGoal
+      let bestX = candX; let bestZ = candZ;
+      for (let s = 0; s <= 24; s++) {
+        const px = candX + dirX * s * 0.25;
+        const pz = candZ + dirZ * s * 0.25;
+        const cx = Math.floor(px); const cz = Math.floor(pz);
+        if (cx >= 0 && cx < width && cz >= 0 && cz < depth && grid[cx][cz]) { 
+          bestX = px; 
+          bestZ = pz; 
+          break; 
+        }
+      }
+      correctedGoal = { 
+        x: Math.max(0, Math.min(bestX, width - 1)), 
+        z: Math.max(0, Math.min(bestZ, depth - 1)), 
+        floor 
+      };
+    } else {
+      // Rectangle bay endpoint positioning (original logic)
+      const sp = targetBay.shelfSpacing ?? 0;
+      const ns = targetBay.shelves.length;
+      const totalSp = sp * Math.max(0, ns - 1);
+      const availW = targetBay.width - totalSp;
+      const uW = ns > 0 ? availW / ns : targetBay.width;
+      const baseCenterX = targetBay.column + uW / 2;
+      const stepX = uW + sp;
+      let idx = Math.round((end.x - baseCenterX) / (stepX || 1));
+      idx = Math.max(0, Math.min(ns - 1, idx));
+      const shelfCenterX = targetBay.column + (uW / 2) + (idx * (uW + sp));
+      const shelfLeftX = shelfCenterX - uW / 2;
+      const shelfRightX = shelfCenterX + uW / 2;
+      const shelfCenterZ = targetBay.row + targetBay.depth / 2;
+      const shelfDepth = targetBay.depth - 0.5;
+      const frontFaceZ = shelfCenterZ + shelfDepth / 2;
+      const backFaceZ = shelfCenterZ - shelfDepth / 2;
 
-    // Compute renderEnd on the exact face line (epsilon outward to remain outside)
-    let faceX = shelfCenterX; let faceZ = shelfCenterZ;
-    if (approach === 'front') faceZ = frontFaceZ + EPS;
-    if (approach === 'back')  faceZ = backFaceZ - EPS;
-    if (approach === 'right') faceX = shelfRightX + EPS;
-    if (approach === 'left')  faceX = shelfLeftX - EPS;
-    let dirX = 0; let dirZ = 0;
-    if (approach === 'front') dirZ = 1;
-    if (approach === 'back')  dirZ = -1;
-    if (approach === 'right') dirX = 1;
-    if (approach === 'left')  dirX = -1;
-    let bestX = candX; let bestZ = candZ;
-    for (let s = 0; s <= 24; s++) {
-      const px = candX + dirX * s * 0.25;
-      const pz = candZ + dirZ * s * 0.25;
-      const cx = Math.floor(px); const cz = Math.floor(pz);
-      if (cx >= 0 && cx < width && cz >= 0 && cz < depth && grid[cx][cz]) { bestX = px; bestZ = pz; break; }
+      let candX = shelfCenterX;
+      let candZ = shelfCenterZ;
+      if (approach === 'front') candZ = frontFaceZ + safeDistance;
+      if (approach === 'back')  candZ = backFaceZ - safeDistance;
+      if (approach === 'right') candX = shelfRightX + safeDistance;
+      if (approach === 'left')  candX = shelfLeftX - safeDistance;
+
+      // Compute renderEnd on the exact face line (epsilon outward to remain outside)
+      let faceX = shelfCenterX; let faceZ = shelfCenterZ;
+      if (approach === 'front') faceZ = frontFaceZ + EPS;
+      if (approach === 'back')  faceZ = backFaceZ - EPS;
+      if (approach === 'right') faceX = shelfRightX + EPS;
+      if (approach === 'left')  faceX = shelfLeftX - EPS;
+      let dirX = 0; let dirZ = 0;
+      if (approach === 'front') dirZ = 1;
+      if (approach === 'back')  dirZ = -1;
+      if (approach === 'right') dirX = 1;
+      if (approach === 'left')  dirX = -1;
+      let bestX = candX; let bestZ = candZ;
+      for (let s = 0; s <= 24; s++) {
+        const px = candX + dirX * s * 0.25;
+        const pz = candZ + dirZ * s * 0.25;
+        const cx = Math.floor(px); const cz = Math.floor(pz);
+        if (cx >= 0 && cx < width && cz >= 0 && cz < depth && grid[cx][cz]) { bestX = px; bestZ = pz; break; }
+      }
+      correctedGoal = { x: Math.max(0, Math.min(bestX, width - 1)), z: Math.max(0, Math.min(bestZ, depth - 1)), floor };
+      renderEnd = { x: Math.max(0, Math.min(faceX, width - 1)), z: Math.max(0, Math.min(faceZ, depth - 1)), floor };
     }
-    correctedGoal = { x: Math.max(0, Math.min(bestX, width - 1)), z: Math.max(0, Math.min(bestZ, depth - 1)), floor };
-    renderEnd = { x: Math.max(0, Math.min(faceX, width - 1)), z: Math.max(0, Math.min(faceZ, depth - 1)), floor };
   }
   const goalX = Math.min(width - 1, Math.max(0, Math.floor(correctedGoal.x)));
   const goalZ = Math.min(depth - 1, Math.max(0, Math.floor(correctedGoal.z)));
