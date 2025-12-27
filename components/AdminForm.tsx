@@ -740,7 +740,49 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                                 }));
                                                                 updateBay(bay.id, { shape: newShape, shelves: updatedShelves });
                                                             } else {
-                                                                updateBay(bay.id, { shape: newShape });
+                                                                // When switching to rectangle, restore closed sides based on adjacent bays and neighboring shelves
+                                                                const adjacent = getAdjacentSidesForBay(bay, storeConfig);
+                                                                const updatedShelves = bay.shelves.map((shelf, idx) => {
+                                                                    const baseSet = new Set<string>();
+                                                                    
+                                                                    // Add sides closed due to adjacent bays
+                                                                    if (adjacent.left) baseSet.add('left');
+                                                                    if (adjacent.right) baseSet.add('right');
+                                                                    if (adjacent.front) baseSet.add('front');
+                                                                    if (adjacent.back) baseSet.add('back');
+                                                                    
+                                                                    // If there's a left neighbor shelf within the same bay, close the left side
+                                                                    if (idx > 0) baseSet.add('left');
+                                                                    
+                                                                    // Determine the closed sides array
+                                                                    let newClosed: ('left'|'right'|'front'|'back')[] | undefined;
+                                                                    if (baseSet.size === 0) {
+                                                                        newClosed = undefined; // keep default (back closed implicitly)
+                                                                    } else if (baseSet.size === 1 && baseSet.has('back')) {
+                                                                        newClosed = undefined; // only back => keep default
+                                                                    } else {
+                                                                        newClosed = Array.from(baseSet) as any;
+                                                                    }
+                                                                    
+                                                                    return newClosed === undefined ? { ...shelf, closedSides: undefined } : { ...shelf, closedSides: newClosed };
+                                                                });
+                                                                
+                                                                // Also close the right side of each shelf that has a right neighbor
+                                                                const finalShelves = updatedShelves.map((shelf, idx) => {
+                                                                    if (idx < updatedShelves.length - 1) {
+                                                                        // This shelf has a right neighbor, so close its right side
+                                                                        const existing = shelf.closedSides;
+                                                                        const prevSet = new Set<string>(existing === undefined ? ['back'] : existing);
+                                                                        prevSet.add('right');
+                                                                        let prevClosed: ('left'|'right'|'front'|'back')[] | undefined;
+                                                                        if (prevSet.size === 1 && prevSet.has('back')) prevClosed = undefined;
+                                                                        else prevClosed = Array.from(prevSet) as any;
+                                                                        return { ...shelf, closedSides: prevClosed };
+                                                                    }
+                                                                    return shelf;
+                                                                });
+                                                                
+                                                                updateBay(bay.id, { shape: newShape, shelves: finalShelves });
                                                             }
                                                         }}
                                                         className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
