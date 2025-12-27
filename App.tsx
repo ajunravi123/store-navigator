@@ -4,7 +4,7 @@ import { StoreConfig, Product, PathNode } from './types';
 import { DEFAULT_STORE_CONFIG, DEFAULT_PRODUCTS } from './constants';
 import Store3D from './components/Store3D';
 import Settings from './components/Settings';
-import AIConsultant from './components/AIConsultant';
+import AIConsultant, { ChatMessage } from './components/AIConsultant';
 import RecommendedProducts from './components/RecommendedProducts';
 import { findShortestPath } from './services/pathfinder';
 import { findBayById, getAllFloors, migrateStoreConfig, getProductLocation, getAisleColor } from './utils/storeHelpers';
@@ -24,6 +24,7 @@ const App: React.FC = () => {
   // AI States
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
   const [aiHighlightedIds, setAiHighlightedIds] = useState<string[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
   // Load data from server on mount
   useEffect(() => {
@@ -380,6 +381,8 @@ const App: React.FC = () => {
           <div className="relative w-full max-w-md h-full bg-white shadow-2xl animate-in slide-in-from-right-full duration-300">
             <AIConsultant
               products={products}
+              chatHistory={chatHistory}
+              onChatHistoryChange={setChatHistory}
               onClose={() => setIsAISidebarOpen(false)}
               onSelectProducts={(ids) => {
                 setAiHighlightedIds(ids);
