@@ -129,15 +129,31 @@ const ZoomToPointerControls: React.FC<{
         // Calculate new distance after zoom
         const newDistance = Math.max(minDistance, Math.min(maxDistance, currentDistance * zoomFactor));
         
+        // Check if intersection point is outside store boundary
+        // If outside, use store center (0, 0, 0 in centered coordinates) as zoom target
+        let zoomTargetPoint = intersectionPoint;
+        if (storeBounds) {
+          const isOutsideBounds = 
+            intersectionPoint.x < storeBounds.minX || 
+            intersectionPoint.x > storeBounds.maxX ||
+            intersectionPoint.z < storeBounds.minZ || 
+            intersectionPoint.z > storeBounds.maxZ;
+          
+          if (isOutsideBounds) {
+            // Use store center as zoom target (center is at 0,0,0 in centered coordinate system)
+            zoomTargetPoint = new THREE.Vector3(0, 0, 0);
+          }
+        }
+        
         // Calculate how much to adjust target based on mouse position
         // When mouse is at center, don't adjust. When at edge, adjust more.
         const mouseDistanceFromCenter = Math.sqrt(mouse.x * mouse.x + mouse.y * mouse.y);
         const adjustStrength = Math.min(1, mouseDistanceFromCenter * 0.5);
         
-        // Calculate the offset from current target to intersection point
-        const targetOffset = intersectionPoint.clone().sub(currentTarget);
+        // Calculate the offset from current target to zoom target point
+        const targetOffset = zoomTargetPoint.clone().sub(currentTarget);
         
-        // Adjust target towards intersection point (more adjustment = more zoom towards pointer)
+        // Adjust target towards zoom target point (more adjustment = more zoom towards pointer/center)
         let adjustedTarget = currentTarget.clone().add(targetOffset.multiplyScalar(adjustStrength * 0.2));
         
         // Clamp target to store boundaries
