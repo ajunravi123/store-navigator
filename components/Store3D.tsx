@@ -5,6 +5,7 @@ import { OrbitControls, Text, PerspectiveCamera, Environment, Grid, Line, Float,
 import * as THREE from 'three';
 import { StoreConfig, Product, PathNode, Bay, Shelf } from '../types';
 import { getAllBays, findBayById, getAllFloors, getAisleIdForBay, getAisleColor, getAisleBounds, getBaysForAisle } from '../utils/storeHelpers';
+import { soundManager } from '../utils/sounds';
 import { Loader2 } from 'lucide-react';
 
 interface Store3DProps {
@@ -304,6 +305,7 @@ const Elevator: React.FC<{
   const doorOpenProgressRef = useRef(0);
   const doorStateRef = useRef<'closed' | 'opening' | 'open' | 'closing'>('closed');
   const lastCloseTimeRef = useRef(0);
+  const lastSoundTimeRef = useRef(0);
   const elevatorPos = useMemo(() => new THREE.Vector3(position[0], 0, position[2]), [position]);
 
   // Realistic elevator door animation with constant speed
@@ -373,14 +375,26 @@ const Elevator: React.FC<{
 
     if (shouldOpen && currentProgress < 1.0) {
       // Opening: constant speed with slight acceleration at start
+      const prevState = doorStateRef.current;
       doorStateRef.current = 'opening';
       const acceleration = currentProgress < 0.1 ? 0.7 : 1.0; // Slight slow start
       newProgress = Math.min(1.0, currentProgress + DOOR_SPEED * delta * acceleration);
+      
+      // Play opening sound when starting to open
+      if (prevState !== 'opening' && currentProgress < 0.1) {
+        soundManager.playElevatorOpen();
+      }
     } else if (shouldClose && currentProgress > 0.0) {
       // Closing: constant speed with slight deceleration at end
+      const prevState = doorStateRef.current;
       doorStateRef.current = 'closing';
       const deceleration = currentProgress < 0.1 ? 0.7 : 1.0; // Slight slow at end
       newProgress = Math.max(0.0, currentProgress - DOOR_SPEED * delta * deceleration);
+      
+      // Play closing sound when starting to close
+      if (prevState !== 'closing' && currentProgress > 0.9) {
+        soundManager.playElevatorClose();
+      }
     } else if (currentProgress >= 1.0) {
       doorStateRef.current = 'open';
     } else if (currentProgress <= 0.0) {
@@ -903,10 +917,20 @@ const BayComponent: React.FC<{ bay: Bay; aisleId: string | null; isTarget: boole
 
 const PathLine: React.FC<{ points: PathNode[]; currentFloor: number }> = ({ points, currentFloor }) => {
   const [progress, setProgress] = useState(0);
+  const hasPlayedSoundRef = useRef(false);
+  
   useEffect(() => {
     setProgress(0);
+    hasPlayedSoundRef.current = false;
     let start = Date.now();
-    const duration = 800; // Faster path drawing
+    const duration = 2500; // Slower path drawing (2.5 seconds)
+    
+    // Play happy sound when path starts drawing
+    if (points.length > 0 && !hasPlayedSoundRef.current) {
+      soundManager.playPathStart();
+      hasPlayedSoundRef.current = true;
+    }
+    
     const animate = () => {
       const elapsed = Date.now() - start;
       const nextProgress = Math.min(1, elapsed / duration);
@@ -953,6 +977,7 @@ const WalkingAvatar: React.FC<{
   const leftArm = useRef<THREE.Group>(null);
   const rightArm = useRef<THREE.Group>(null);
   const avatarPositionRef = useRef<THREE.Vector3 | null>(null);
+  const lastFootstepTimeRef = useRef(0);
 
   const floorPoints = useMemo(() => points.filter(p => p.floor === currentFloor), [points, currentFloor]);
   
@@ -1033,6 +1058,16 @@ const WalkingAvatar: React.FC<{
     const legSwing = swingFactor * 0.4;
     const armSwing = -swingFactor * 0.35;
     const bounce = isWalking ? Math.abs(Math.cos(state.clock.elapsedTime * speedMultiplier)) * 0.05 : 0;
+    
+    // Play footstep sounds while walking
+    if (isWalking) {
+      const footstepInterval = 0.5; // Play footstep every 0.5 seconds
+      const timeSinceLastFootstep = state.clock.elapsedTime - lastFootstepTimeRef.current;
+      if (timeSinceLastFootstep >= footstepInterval) {
+        soundManager.playFootstep();
+        lastFootstepTimeRef.current = state.clock.elapsedTime;
+      }
+    }
 
     if (leftLeg.current) leftLeg.current.rotation.x = legSwing;
     if (rightLeg.current) rightLeg.current.rotation.x = -legSwing;
