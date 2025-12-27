@@ -294,23 +294,170 @@ const Door: React.FC<{ position: [number, number, number] }> = ({ position }) =>
   </group>
 );
 
-const Elevator: React.FC<{ position: [number, number, number] }> = ({ position }) => (
-  <group position={position}>
-    <mesh position={[0, 1.25, 0]}>
-      <boxGeometry args={[4, 2.5, 4]} />
-      <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.1} />
-    </mesh>
-    <mesh position={[0, 1.25, 2.05]}>
-      <boxGeometry args={[3, 2.2, 0.1]} />
-      <meshStandardMaterial color="#94a3b8" metalness={1} roughness={0.2} />
-    </mesh>
-    <Billboard
-      position={[0, 2.6, 2.1]}
-    >
-      <Text fontSize={0.5} color="#1e40af" fontWeight="black" outlineWidth={0.03} outlineColor="#ffffff">ELEVATOR</Text>
-    </Billboard>
-  </group>
-);
+const Elevator: React.FC<{ 
+  position: [number, number, number]; 
+  avatarPosition?: THREE.Vector3 | null;
+  isPathStarting?: boolean;
+}> = ({ position, avatarPosition, isPathStarting }) => {
+  const leftDoorRef = useRef<THREE.Group>(null);
+  const rightDoorRef = useRef<THREE.Group>(null);
+  const doorOpenProgressRef = useRef(0);
+  const doorStateRef = useRef<'closed' | 'opening' | 'open' | 'closing'>('closed');
+  const lastCloseTimeRef = useRef(0);
+  const elevatorPos = useMemo(() => new THREE.Vector3(position[0], 0, position[2]), [position]);
+
+  // Realistic elevator door animation with constant speed
+  useFrame((state, delta) => {
+    if (!leftDoorRef.current || !rightDoorRef.current) return;
+
+    const DOOR_OPEN_DISTANCE = 3.5; // Distance at which doors start opening
+    const DOOR_CLOSE_DISTANCE = 4.5; // Distance at which doors start closing
+    const ELEVATOR_WIDTH = 4.0; // Elevator block width (extends from -2 to +2)
+    const ELEVATOR_BOUNDARY = ELEVATOR_WIDTH / 2; // 2.0 - the boundary position
+    // Maximum door offset: doors slide until their outer edge reaches elevator boundary
+    // Left door: mesh at -0.6 relative to group, width 1.2, so right edge at 0 relative to group
+    // When group moves to x = -2, door right edge is at -2 (elevator left boundary)
+    // Right door: mesh at 0.6 relative to group, width 1.2, so left edge at 0 relative to group
+    // When group moves to x = +2, door left edge is at +2 (elevator right boundary)
+    const MAX_DOOR_OFFSET = ELEVATOR_BOUNDARY; // 2.0 - doors slide until groups reach boundaries
+    const DOOR_SPEED = 2.0; // Units per second (constant speed like real elevators)
+    const DOOR_CLOSE_DELAY = 1.0; // Seconds to wait before closing after avatar leaves
+
+    let shouldOpen = false;
+    let shouldClose = false;
+
+    // Determine if doors should open or close based on avatar position
+    if (isPathStarting) {
+      // If path is starting, open doors immediately
+      shouldOpen = true;
+      shouldClose = false;
+    } else if (avatarPosition) {
+      const distance = avatarPosition.distanceTo(elevatorPos);
+      
+      if (distance < DOOR_OPEN_DISTANCE) {
+        // Avatar is approaching or inside - open doors
+        shouldOpen = true;
+        shouldClose = false;
+        lastCloseTimeRef.current = state.clock.elapsedTime;
+      } else if (distance > DOOR_CLOSE_DISTANCE) {
+        // Avatar has left - wait a bit then close
+        const timeSinceLeft = state.clock.elapsedTime - lastCloseTimeRef.current;
+        if (timeSinceLeft > DOOR_CLOSE_DELAY) {
+          shouldOpen = false;
+          shouldClose = true;
+        } else {
+          // Keep doors open during delay
+          shouldOpen = doorOpenProgressRef.current > 0.1;
+          shouldClose = false;
+        }
+      } else {
+        // Transition zone - maintain current state
+        shouldOpen = doorOpenProgressRef.current > 0.5;
+        shouldClose = !shouldOpen;
+        if (shouldOpen) {
+          lastCloseTimeRef.current = state.clock.elapsedTime;
+        }
+      }
+    } else {
+      // No avatar - close doors after delay
+      const timeSinceLeft = state.clock.elapsedTime - lastCloseTimeRef.current;
+      if (timeSinceLeft > DOOR_CLOSE_DELAY) {
+        shouldOpen = false;
+        shouldClose = true;
+      }
+    }
+
+    // Update door state with realistic constant-speed movement
+    const currentProgress = doorOpenProgressRef.current;
+    let newProgress = currentProgress;
+
+    if (shouldOpen && currentProgress < 1.0) {
+      // Opening: constant speed with slight acceleration at start
+      doorStateRef.current = 'opening';
+      const acceleration = currentProgress < 0.1 ? 0.7 : 1.0; // Slight slow start
+      newProgress = Math.min(1.0, currentProgress + DOOR_SPEED * delta * acceleration);
+    } else if (shouldClose && currentProgress > 0.0) {
+      // Closing: constant speed with slight deceleration at end
+      doorStateRef.current = 'closing';
+      const deceleration = currentProgress < 0.1 ? 0.7 : 1.0; // Slight slow at end
+      newProgress = Math.max(0.0, currentProgress - DOOR_SPEED * delta * deceleration);
+    } else if (currentProgress >= 1.0) {
+      doorStateRef.current = 'open';
+    } else if (currentProgress <= 0.0) {
+      doorStateRef.current = 'closed';
+    }
+
+    doorOpenProgressRef.current = newProgress;
+
+    // Apply door positions - constrained to stay within elevator boundaries
+    // Doors slide outward but cannot exceed elevator block width
+    const doorOffset = newProgress * MAX_DOOR_OFFSET;
+    const ELEVATOR_LEFT_BOUNDARY = -ELEVATOR_BOUNDARY; // -2.0
+    const ELEVATOR_RIGHT_BOUNDARY = ELEVATOR_BOUNDARY; // +2.0
+    
+    if (leftDoorRef.current) {
+      // Left door slides left: group moves from 0 to -2
+      // Door mesh is at -0.6 relative to group, so door right edge is at group.x + 0
+      // Constrain: door right edge should not go beyond -2 (elevator left boundary)
+      const targetX = -doorOffset;
+      leftDoorRef.current.position.x = Math.max(ELEVATOR_LEFT_BOUNDARY, targetX);
+    }
+    if (rightDoorRef.current) {
+      // Right door slides right: group moves from 0 to +2
+      // Door mesh is at 0.6 relative to group, so door left edge is at group.x + 0
+      // Constrain: door left edge should not go beyond +2 (elevator right boundary)
+      const targetX = doorOffset;
+      rightDoorRef.current.position.x = Math.min(ELEVATOR_RIGHT_BOUNDARY, targetX);
+    }
+  });
+
+  return (
+    <group position={position}>
+      {/* Elevator shaft */}
+      <mesh position={[0, 1.25, 0]}>
+        <boxGeometry args={[4, 2.5, 4]} />
+        <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.1} />
+      </mesh>
+      
+      {/* Elevator interior back wall */}
+      <mesh position={[0, 1.25, -1.95]}>
+        <boxGeometry args={[3.6, 2.2, 0.1]} />
+        <meshStandardMaterial color="#475569" metalness={0.8} roughness={0.3} />
+      </mesh>
+
+      {/* Left door */}
+      <group ref={leftDoorRef} position={[0, 0, 0]}>
+        <mesh position={[-0.6, 1.25, 2.05]}>
+          <boxGeometry args={[1.2, 2.2, 0.1]} />
+          <meshStandardMaterial color="#94a3b8" metalness={1} roughness={0.2} />
+        </mesh>
+        {/* Door handle */}
+        <mesh position={[-0.6, 1.25, 2.11]}>
+          <boxGeometry args={[0.05, 0.3, 0.05]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.1} />
+        </mesh>
+      </group>
+
+      {/* Right door */}
+      <group ref={rightDoorRef} position={[0, 0, 0]}>
+        <mesh position={[0.6, 1.25, 2.05]}>
+          <boxGeometry args={[1.2, 2.2, 0.1]} />
+          <meshStandardMaterial color="#94a3b8" metalness={1} roughness={0.2} />
+        </mesh>
+        {/* Door handle */}
+        <mesh position={[0.6, 1.25, 2.11]}>
+          <boxGeometry args={[0.05, 0.3, 0.05]} />
+          <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.1} />
+        </mesh>
+      </group>
+
+      {/* Elevator label */}
+      <Billboard position={[0, 2.6, 2.1]}>
+        <Text fontSize={0.5} color="#1e40af" fontWeight="black" outlineWidth={0.03} outlineColor="#ffffff">ELEVATOR</Text>
+      </Billboard>
+    </group>
+  );
+};
 
 // Generate product texture with vertical and horizontal lines
 const generateProductTexture = (baseColor: string, seed: number = 0): THREE.CanvasTexture => {
@@ -794,14 +941,30 @@ const PathLine: React.FC<{ points: PathNode[]; currentFloor: number }> = ({ poin
   );
 };
 
-const WalkingAvatar: React.FC<{ points: PathNode[]; currentFloor: number }> = ({ points, currentFloor }) => {
+const WalkingAvatar: React.FC<{ 
+  points: PathNode[]; 
+  currentFloor: number;
+  config: StoreConfig;
+  onPositionUpdate?: (position: THREE.Vector3 | null) => void;
+}> = ({ points, currentFloor, config, onPositionUpdate }) => {
   const group = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Group>(null);
   const rightLeg = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Group>(null);
   const rightArm = useRef<THREE.Group>(null);
+  const avatarPositionRef = useRef<THREE.Vector3 | null>(null);
 
   const floorPoints = useMemo(() => points.filter(p => p.floor === currentFloor), [points, currentFloor]);
+  
+  // Check if path starts at an elevator
+  const startsAtElevator = useMemo(() => {
+    if (floorPoints.length === 0) return false;
+    const firstPoint = floorPoints[0];
+    return config.elevators.some(elev => {
+      const dist = Math.hypot(elev.x - firstPoint.x, elev.z - firstPoint.z);
+      return dist < 2.5; // Within elevator radius
+    });
+  }, [floorPoints, config.elevators]);
 
   useFrame((state) => {
     if (!group.current || floorPoints.length < 2) return;
@@ -827,12 +990,33 @@ const WalkingAvatar: React.FC<{ points: PathNode[]; currentFloor: number }> = ({
     const p2 = floorPoints[nextIndex];
 
     if (p1 && p2) {
-      const currentPos = new THREE.Vector3(
+      let currentPos = new THREE.Vector3(
         p1.x + (p2.x - p1.x) * alpha,
         0,
         p1.z + (p2.z - p1.z) * alpha
       );
+      
+      // If starting at elevator, position avatar inside elevator until it moves forward
+      if (startsAtElevator && index === 0 && alpha < 0.3) {
+        const elevator = config.elevators.find(elev => {
+          const dist = Math.hypot(elev.x - p1.x, elev.z - p1.z);
+          return dist < 2.5;
+        });
+        if (elevator) {
+          // Position avatar well inside elevator (towards back, away from doors)
+          // Elevator doors are at z=2.05 relative to elevator center
+          // Position avatar at center/back of elevator to avoid door overlap
+          currentPos = new THREE.Vector3(elevator.x, 0, elevator.z - 1.2);
+        }
+      }
+      
       group.current.position.copy(currentPos);
+      avatarPositionRef.current = currentPos;
+      
+      // Notify parent of position update
+      if (onPositionUpdate) {
+        onPositionUpdate(currentPos);
+      }
 
       const lookTarget = (walkProgress < 1) ? new THREE.Vector3(p2.x, 0, p2.z) : new THREE.Vector3(floorPoints[totalPoints - 1].x, 0, floorPoints[totalPoints - 1].z);
       if (group.current.position.distanceTo(lookTarget) > 0.05) {
@@ -1080,6 +1264,23 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
 const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, currentFloor, allProducts = [], showAllProducts = false, showLabels = false, targetDepartmentId, targetAisleId, targetShelfId, disableFocus }) => {
   const centerX = config.gridSize.width / 2;
   const centerZ = config.gridSize.depth / 2;
+  const [avatarPosition, setAvatarPosition] = useState<THREE.Vector3 | null>(null);
+  
+  // Reset avatar position when path changes
+  useEffect(() => {
+    setAvatarPosition(null);
+  }, [path, currentFloor]);
+  
+  // Check if path starts at an elevator
+  const pathStartsAtElevator = useMemo(() => {
+    if (path.length === 0) return false;
+    const firstPoint = path[0];
+    if (firstPoint.floor !== currentFloor) return false;
+    return config.elevators.some(elev => {
+      const dist = Math.hypot(elev.x - firstPoint.x, elev.z - firstPoint.z);
+      return dist < 2.5; // Within elevator radius
+    });
+  }, [path, currentFloor, config.elevators]);
 
   const selectedBay = useMemo(() => targetDepartmentId ? findBayById(config, targetDepartmentId) : undefined, [config, targetDepartmentId]);
   const targetBay = useMemo(() => {
@@ -1218,9 +1419,19 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
             </group>
           )}
 
-          {config.elevators.map((e, idx) => (
-            <Elevator key={`elevator-${idx}`} position={[e.x, 0, e.z]} />
-          ))}
+          {config.elevators.map((e, idx) => {
+            // Check if this elevator is where the path starts
+            const isPathStarting = pathStartsAtElevator && path.length > 0 && path[0].floor === currentFloor && 
+              Math.hypot(e.x - path[0].x, e.z - path[0].z) < 2.5;
+            return (
+              <Elevator 
+                key={`elevator-${idx}`} 
+                position={[e.x, 0, e.z]} 
+                avatarPosition={avatarPosition}
+                isPathStarting={isPathStarting}
+              />
+            );
+          })}
 
           {/* Render aisle highlights first (behind bays) - shows the entire aisle area */}
           {(() => {
@@ -1241,7 +1452,12 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
           })}
 
           <PathLine points={path} currentFloor={currentFloor} />
-          <WalkingAvatar points={path} currentFloor={currentFloor} />
+          <WalkingAvatar 
+            points={path} 
+            currentFloor={currentFloor} 
+            config={config}
+            onPositionUpdate={setAvatarPosition}
+          />
 
           {floorProducts.map(p => {
             const bayId = p.bayId || p.departmentId;
