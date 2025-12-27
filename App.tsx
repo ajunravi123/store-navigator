@@ -558,7 +558,7 @@ const App: React.FC = () => {
                   disableFocus={true}
                 />
                 <div className="absolute top-6 right-6 flex flex-col gap-2">
-                  {getAllFloors(storeConfig).map(f => (
+                  {getAllFloors(storeConfig).slice().reverse().map(f => (
                     <button
                       key={f}
                       onClick={() => setCurrentMapFloor(f)}
