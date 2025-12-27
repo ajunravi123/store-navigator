@@ -49,6 +49,222 @@ const Loader = () => {
   );
 };
 
+// Custom OrbitControls with zoom-to-mouse-pointer functionality and boundary constraints
+const ZoomToPointerControls: React.FC<{ 
+  minDistance?: number; 
+  maxDistance?: number; 
+  maxPolarAngle?: number;
+  storeConfig?: StoreConfig;
+}> = ({ 
+  minDistance = 3, 
+  maxDistance = 300, 
+  maxPolarAngle = Math.PI / 2.2,
+  storeConfig
+}) => {
+  const { camera, gl, raycaster } = useThree();
+  const controlsRef = useRef<any>(null);
+  const mouseRef = useRef({ x: 0, y: 0 });
+  const isZoomingRef = useRef(false);
+
+  // Calculate store boundaries with padding (accounting for scene offset)
+  const storeBounds = useMemo(() => {
+    if (!storeConfig) return null;
+    const padding = 5; // Padding outside store boundaries
+    const centerX = storeConfig.gridSize.width / 2;
+    const centerZ = storeConfig.gridSize.depth / 2;
+    // Scene is offset by [-centerX, 0, -centerZ], so adjust world coordinates
+    return {
+      minX: -centerX - padding,
+      maxX: storeConfig.gridSize.width - centerX + padding,
+      minZ: -centerZ - padding,
+      maxZ: storeConfig.gridSize.depth - centerZ + padding,
+    };
+  }, [storeConfig]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      // Normalize mouse coordinates to -1 to 1
+      const rect = gl.domElement.getBoundingClientRect();
+      mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    };
+
+    gl.domElement.addEventListener('mousemove', handleMouseMove);
+    return () => gl.domElement.removeEventListener('mousemove', handleMouseMove);
+  }, [gl]);
+
+  useEffect(() => {
+    if (!controlsRef.current) return;
+
+    const controls = controlsRef.current;
+    
+    // Override the zoom behavior
+    const handleWheel = (event: WheelEvent) => {
+      if (!controls.enabled) return;
+      
+      event.preventDefault();
+      isZoomingRef.current = true;
+      
+      // Get mouse position in normalized device coordinates
+      const mouse = new THREE.Vector2(mouseRef.current.x, mouseRef.current.y);
+      
+      // Create a raycaster from the camera through the mouse position
+      raycaster.setFromCamera(mouse, camera);
+      
+      // Intersect with a plane at y=0 (ground level)
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      const intersectionPoint = new THREE.Vector3();
+      const hasIntersection = raycaster.ray.intersectPlane(plane, intersectionPoint);
+      
+      if (hasIntersection) {
+        // Calculate zoom delta
+        const delta = event.deltaY * 0.01;
+        const zoomFactor = 1 + delta;
+        
+        // Get current camera position and target
+        const currentTarget = controls.target.clone();
+        const currentPosition = camera.position.clone();
+        const currentDistance = currentPosition.distanceTo(currentTarget);
+        
+        // Calculate new distance after zoom
+        const newDistance = Math.max(minDistance, Math.min(maxDistance, currentDistance * zoomFactor));
+        
+        // Calculate how much to adjust target based on mouse position
+        // When mouse is at center, don't adjust. When at edge, adjust more.
+        const mouseDistanceFromCenter = Math.sqrt(mouse.x * mouse.x + mouse.y * mouse.y);
+        const adjustStrength = Math.min(1, mouseDistanceFromCenter * 0.5);
+        
+        // Calculate the offset from current target to intersection point
+        const targetOffset = intersectionPoint.clone().sub(currentTarget);
+        
+        // Adjust target towards intersection point (more adjustment = more zoom towards pointer)
+        let adjustedTarget = currentTarget.clone().add(targetOffset.multiplyScalar(adjustStrength * 0.2));
+        
+        // Clamp target to store boundaries
+        if (storeBounds) {
+          adjustedTarget.x = Math.max(storeBounds.minX, Math.min(storeBounds.maxX, adjustedTarget.x));
+          adjustedTarget.z = Math.max(storeBounds.minZ, Math.min(storeBounds.maxZ, adjustedTarget.z));
+        }
+        
+        // Calculate new camera position
+        const direction = currentPosition.clone().sub(adjustedTarget).normalize();
+        let newPosition = adjustedTarget.clone().add(direction.multiplyScalar(newDistance));
+        
+        // Clamp camera position to ensure it doesn't go too far outside bounds
+        if (storeBounds) {
+          const maxCameraDistance = Math.max(storeBounds.maxX - storeBounds.minX, storeBounds.maxZ - storeBounds.minZ) * 0.8;
+          const cameraBounds = {
+            minX: storeBounds.minX - maxCameraDistance,
+            maxX: storeBounds.maxX + maxCameraDistance,
+            minZ: storeBounds.minZ - maxCameraDistance,
+            maxZ: storeBounds.maxZ + maxCameraDistance,
+          };
+          newPosition.x = Math.max(cameraBounds.minX, Math.min(cameraBounds.maxX, newPosition.x));
+          newPosition.z = Math.max(cameraBounds.minZ, Math.min(cameraBounds.maxZ, newPosition.z));
+        }
+        
+        // Apply the changes
+        controls.target.copy(adjustedTarget);
+        camera.position.copy(newPosition);
+        controls.update();
+      } else {
+        // Fallback to normal zoom behavior if no intersection
+        const delta = event.deltaY * 0.01;
+        const zoomFactor = 1 + delta;
+        const currentDistance = camera.position.distanceTo(controls.target);
+        const newDistance = Math.max(minDistance, Math.min(maxDistance, currentDistance * zoomFactor));
+        
+        const direction = camera.position.clone().sub(controls.target).normalize();
+        let newPosition = controls.target.clone().add(direction.multiplyScalar(newDistance));
+        
+        // Clamp camera position to boundaries
+        if (storeBounds) {
+          const maxCameraDistance = Math.max(storeBounds.maxX - storeBounds.minX, storeBounds.maxZ - storeBounds.minZ) * 0.8;
+          const cameraBounds = {
+            minX: storeBounds.minX - maxCameraDistance,
+            maxX: storeBounds.maxX + maxCameraDistance,
+            minZ: storeBounds.minZ - maxCameraDistance,
+            maxZ: storeBounds.maxZ + maxCameraDistance,
+          };
+          newPosition.x = Math.max(cameraBounds.minX, Math.min(cameraBounds.maxX, newPosition.x));
+          newPosition.z = Math.max(cameraBounds.minZ, Math.min(cameraBounds.maxZ, newPosition.z));
+        }
+        
+        camera.position.copy(newPosition);
+        controls.update();
+      }
+      
+      // Reset zoom flag after a short delay
+      setTimeout(() => {
+        isZoomingRef.current = false;
+      }, 100);
+    };
+
+    gl.domElement.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      gl.domElement.removeEventListener('wheel', handleWheel);
+    };
+  }, [camera, gl, raycaster, minDistance, maxDistance, storeBounds]);
+
+  // Continuously clamp camera and target to boundaries for smooth constraint
+  useFrame(() => {
+    if (!controlsRef.current || !storeBounds) return;
+    
+    const controls = controlsRef.current;
+    const target = controls.target;
+    const position = camera.position;
+    
+    // Smoothly clamp target to boundaries
+    const targetClamped = new THREE.Vector3(
+      Math.max(storeBounds.minX, Math.min(storeBounds.maxX, target.x)),
+      target.y,
+      Math.max(storeBounds.minZ, Math.min(storeBounds.maxZ, target.z))
+    );
+    
+    // Only update if there's a significant difference to avoid jitter
+    if (target.distanceTo(targetClamped) > 0.01) {
+      target.lerp(targetClamped, 0.1);
+      controls.update();
+    }
+    
+    // Clamp camera position to reasonable bounds
+    const maxCameraDistance = Math.max(storeBounds.maxX - storeBounds.minX, storeBounds.maxZ - storeBounds.minZ) * 0.8;
+    const cameraBounds = {
+      minX: storeBounds.minX - maxCameraDistance,
+      maxX: storeBounds.maxX + maxCameraDistance,
+      minZ: storeBounds.minZ - maxCameraDistance,
+      maxZ: storeBounds.maxZ + maxCameraDistance,
+    };
+    
+    const positionClamped = new THREE.Vector3(
+      Math.max(cameraBounds.minX, Math.min(cameraBounds.maxX, position.x)),
+      position.y,
+      Math.max(cameraBounds.minZ, Math.min(cameraBounds.maxZ, position.z))
+    );
+    
+    if (position.distanceTo(positionClamped) > 0.01) {
+      position.lerp(positionClamped, 0.1);
+    }
+  });
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      makeDefault
+      minDistance={minDistance}
+      maxDistance={maxDistance}
+      maxPolarAngle={maxPolarAngle}
+      enableDamping={true}
+      dampingFactor={0.08}
+      enablePan={true}
+      panSpeed={0.8}
+      rotateSpeed={0.5}
+      zoomSpeed={0.8}
+    />
+  );
+};
+
 const Door: React.FC<{ position: [number, number, number] }> = ({ position }) => (
   <group position={position}>
     <mesh position={[0, 1.25, 0]}>
@@ -932,7 +1148,12 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
   return (
     <>
       <PerspectiveCamera makeDefault fov={40} />
-      <OrbitControls makeDefault minDistance={3} maxDistance={300} maxPolarAngle={Math.PI / 2.2} />
+      <ZoomToPointerControls 
+        minDistance={3} 
+        maxDistance={300} 
+        maxPolarAngle={Math.PI / 2.2}
+        storeConfig={config}
+      />
       <CameraController config={config} targetPoint={disableFocus ? null : cameraTargetPoint} />
       <ambientLight intensity={1.0} />
       <directionalLight position={[10, 50, 10]} intensity={1.8} castShadow />
