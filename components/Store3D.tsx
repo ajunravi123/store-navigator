@@ -1378,37 +1378,123 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
         <Environment preset="city" />
 
         <group position={[-centerX, 0, -centerZ]}>
+          {/* Extended floor area (non-reflective) */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, -0.01, centerZ]} receiveShadow>
             <planeGeometry args={[config.gridSize.width + 500, config.gridSize.depth + 500]} />
             <meshStandardMaterial color="#f8fafc" roughness={0.8} />
           </mesh>
+          
+          {/* Store floor (reflective - only within store boundaries) */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, 0, centerZ]} receiveShadow>
+            <planeGeometry args={[config.gridSize.width, config.gridSize.depth]} />
+            <meshStandardMaterial 
+              color="#e2e8f0" 
+              roughness={0.1} 
+              metalness={0.2}
+              envMapIntensity={1.0}
+            />
+          </mesh>
+          
           <Grid position={[centerX, 0, centerZ]} args={[config.gridSize.width, config.gridSize.depth]} cellSize={1} sectionSize={5} sectionColor="#cbd5e1" cellColor="#e2e8f0" infiniteGrid={false} />
 
-          {/* Perimeter Boundary */}
+          {/* Store Boundary Line - Visible border around store perimeter */}
           <Line
             points={[
-              [0, 0.05, 0],
-              [config.gridSize.width, 0.05, 0],
-              [config.gridSize.width, 0.05, config.gridSize.depth],
-              [0, 0.05, config.gridSize.depth],
-              [0, 0.05, 0]
+              [0, 0.02, 0],
+              [config.gridSize.width, 0.02, 0],
+              [config.gridSize.width, 0.02, config.gridSize.depth],
+              [0, 0.02, config.gridSize.depth],
+              [0, 0.02, 0]
+            ]}
+            color="#1e40af"
+            lineWidth={8}
+          />
+          <Line
+            points={[
+              [0, 0.02, 0],
+              [config.gridSize.width, 0.02, 0],
+              [config.gridSize.width, 0.02, config.gridSize.depth],
+              [0, 0.02, config.gridSize.depth],
+              [0, 0.02, 0]
             ]}
             color="#3b82f6"
-            lineWidth={3}
+            lineWidth={4}
+            transparent
+            opacity={0.8}
           />
+          {/* Subtle glow effect */}
           <Line
             points={[
-              [0, 0.05, 0],
-              [config.gridSize.width, 0.05, 0],
-              [config.gridSize.width, 0.05, config.gridSize.depth],
-              [0, 0.05, config.gridSize.depth],
-              [0, 0.05, 0]
+              [0, 0.01, 0],
+              [config.gridSize.width, 0.01, 0],
+              [config.gridSize.width, 0.01, config.gridSize.depth],
+              [0, 0.01, config.gridSize.depth],
+              [0, 0.01, 0]
             ]}
-            color="#93c5fd"
-            lineWidth={1}
+            color="#60a5fa"
+            lineWidth={2}
             transparent
-            opacity={0.5}
+            opacity={0.4}
           />
+
+          {/* Transparent walls at store boundary - only visible from inside */}
+          <group renderOrder={-1}>
+            {/* Left wall (at x=0) - back face faces inward */}
+            <mesh position={[0, 5, config.gridSize.depth / 2]} rotation={[0, -Math.PI / 2, 0]} renderOrder={-1}>
+              <planeGeometry args={[config.gridSize.depth, 10]} />
+              <meshStandardMaterial 
+                color="#cbd5e1" 
+                transparent 
+                opacity={0.2}
+                side={THREE.BackSide}
+                roughness={0.4}
+                metalness={0.1}
+                depthWrite={false}
+              />
+            </mesh>
+            
+            {/* Right wall (at x=width) - back face faces inward */}
+            <mesh position={[config.gridSize.width, 5, config.gridSize.depth / 2]} rotation={[0, Math.PI / 2, 0]} renderOrder={-1}>
+              <planeGeometry args={[config.gridSize.depth, 10]} />
+              <meshStandardMaterial 
+                color="#cbd5e1" 
+                transparent 
+                opacity={0.2}
+                side={THREE.BackSide}
+                roughness={0.4}
+                metalness={0.1}
+                depthWrite={false}
+              />
+            </mesh>
+            
+            {/* Back wall (at z=0) - back face faces inward */}
+            <mesh position={[config.gridSize.width / 2, 5, 0]} rotation={[0, Math.PI, 0]} renderOrder={-1}>
+              <planeGeometry args={[config.gridSize.width, 10]} />
+              <meshStandardMaterial 
+                color="#cbd5e1" 
+                transparent 
+                opacity={0.2}
+                side={THREE.BackSide}
+                roughness={0.4}
+                metalness={0.1}
+                depthWrite={false}
+              />
+            </mesh>
+            
+            {/* Front wall (at z=depth) - back face faces inward */}
+            <mesh position={[config.gridSize.width / 2, 5, config.gridSize.depth]} rotation={[0, 0, 0]} renderOrder={-1}>
+              <planeGeometry args={[config.gridSize.width, 10]} />
+              <meshStandardMaterial 
+                color="#cbd5e1" 
+                transparent 
+                opacity={0.2}
+                side={THREE.BackSide}
+                roughness={0.4}
+                metalness={0.1}
+                depthWrite={false}
+              />
+            </mesh>
+          </group>
 
           {config.entrance.floor === currentFloor && (
             <group position={[config.entrance.x, 0, config.entrance.z]}>
