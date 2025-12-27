@@ -80,11 +80,163 @@ const Elevator: React.FC<{ position: [number, number, number] }> = ({ position }
   </group>
 );
 
+// Generate product texture with vertical and horizontal lines
+const generateProductTexture = (baseColor: string, seed: number = 0): THREE.CanvasTexture => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  // Base color fill
+  ctx.fillStyle = baseColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Vertical lines - evenly spaced
+  ctx.strokeStyle = `rgba(0, 0, 0, 0.15)`;
+  ctx.lineWidth = 1;
+  const verticalSpacing = 32;
+  for (let x = 0; x <= canvas.width; x += verticalSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+    ctx.stroke();
+  }
+
+  // Horizontal lines - evenly spaced
+  ctx.strokeStyle = `rgba(0, 0, 0, 0.15)`;
+  ctx.lineWidth = 1;
+  const horizontalSpacing = 32;
+  for (let y = 0; y <= canvas.height; y += horizontalSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+
+  // Subtle gradient for depth
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, `rgba(255, 255, 255, 0.05)`);
+  gradient.addColorStop(0.5, `rgba(0, 0, 0, 0)`);
+  gradient.addColorStop(1, `rgba(0, 0, 0, 0.05)`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  return texture;
+};
+
+// Component to show label only on camera-facing side
+const CameraFacingLabel: React.FC<{
+  shelfName: string;
+  width: number;
+  depth: number;
+  height: number;
+  closedSides?: ('left' | 'right' | 'front' | 'back')[];
+}> = ({ shelfName, width, depth, height, closedSides }) => {
+  const { camera } = useThree();
+  const groupRef = useRef<THREE.Group>(null);
+  const [visibleSide, setVisibleSide] = useState<'front' | 'back' | 'left' | 'right' | null>(null);
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    
+    // Get camera world position
+    const cameraWorldPos = new THREE.Vector3();
+    camera.getWorldPosition(cameraWorldPos);
+    
+    // Get shelf center world position
+    const shelfWorldPos = new THREE.Vector3();
+    groupRef.current.getWorldPosition(shelfWorldPos);
+    
+    // Calculate direction from shelf to camera
+    const directionToCamera = cameraWorldPos.clone().sub(shelfWorldPos).normalize();
+    
+    // Get shelf's world rotation to transform normals
+    const shelfWorldQuat = new THREE.Quaternion();
+    groupRef.current.getWorldQuaternion(shelfWorldQuat);
+    
+    // Calculate which side is most facing the camera
+    const sides: Array<{ name: 'front' | 'back' | 'left' | 'right'; normal: THREE.Vector3; isOpen: boolean }> = [
+      { name: 'front', normal: new THREE.Vector3(0, 0, 1), isOpen: !closedSides?.includes('front') },
+      { name: 'back', normal: new THREE.Vector3(0, 0, -1), isOpen: !(closedSides === undefined || (closedSides.length > 0 && closedSides.includes('back'))) },
+      { name: 'left', normal: new THREE.Vector3(-1, 0, 0), isOpen: !closedSides?.includes('left') },
+      { name: 'right', normal: new THREE.Vector3(1, 0, 0), isOpen: !closedSides?.includes('right') },
+    ];
+    
+    // Transform normals to world space
+    sides.forEach(side => {
+      side.normal.applyQuaternion(shelfWorldQuat);
+    });
+    
+    // Find the open side with highest dot product (most facing camera)
+    let bestSide: 'front' | 'back' | 'left' | 'right' | null = null;
+    let bestDot = -Infinity;
+    
+    for (const side of sides) {
+      if (side.isOpen) {
+        const dot = directionToCamera.dot(side.normal);
+        if (dot > bestDot) {
+          bestDot = dot;
+          bestSide = side.name;
+        }
+      }
+    }
+    
+    setVisibleSide(bestSide);
+  });
+
+  const UNIT_HEIGHT = height;
+  const labelY = UNIT_HEIGHT / 2 + 0.3;
+
+  return (
+    <group ref={groupRef}>
+      {visibleSide === 'front' && (
+        <group position={[0, labelY, depth / 2 - 0.6]}>
+          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
+            {shelfName}
+          </Text>
+        </group>
+      )}
+      {visibleSide === 'back' && (
+        <group position={[0, labelY, -depth / 2 + 0.6]} rotation={[0, Math.PI, 0]}>
+          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
+            {shelfName}
+          </Text>
+        </group>
+      )}
+      {visibleSide === 'left' && (
+        <group position={[-width / 2 + 0.6, labelY, 0]} rotation={[0, -Math.PI / 2, 0]}>
+          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
+            {shelfName}
+          </Text>
+        </group>
+      )}
+      {visibleSide === 'right' && (
+        <group position={[width / 2 - 0.6, labelY, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
+            {shelfName}
+          </Text>
+        </group>
+      )}
+    </group>
+  );
+};
+
 const AnimatedProductRow: React.FC<{ position: [number, number, number]; args: [number, number, number]; color: string; isHighlight: boolean }> = ({ position, args, color, isHighlight }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
   const startColor = useMemo(() => new THREE.Color(color), [color]);
   const highlightColor = useMemo(() => new THREE.Color('#fbbf24'), []); // Amber Highlight
+  
+  // Generate texture with seed based on color for consistency
+  const texture = useMemo(() => {
+    const seed = color.charCodeAt(0) + color.charCodeAt(color.length - 1);
+    return generateProductTexture(color, seed);
+  }, [color]);
 
   useFrame((state) => {
     if (isHighlight && materialRef.current) {
@@ -101,7 +253,16 @@ const AnimatedProductRow: React.FC<{ position: [number, number, number]; args: [
   return (
     <mesh position={position} ref={meshRef}>
       <boxGeometry args={args} />
-      <meshStandardMaterial ref={materialRef} color={color} />
+      <meshStandardMaterial 
+        ref={materialRef} 
+        color={color}
+        map={texture}
+        roughness={0.7}
+        metalness={0.1}
+        side={THREE.FrontSide}
+        transparent={true}
+        opacity={0.75}
+      />
     </mesh>
   );
 };
@@ -198,7 +359,7 @@ const DetailedShelfUnit: React.FC<{
             </mesh>
 
             {/* Front Products */}
-            {showFront && i < shelfCount - 1 && (
+            {showFront && (
               <group>
                 <AnimatedProductRow
                   position={[0, 0.2, 0]}
@@ -331,13 +492,15 @@ const BayComponent: React.FC<{ bay: Bay; aisleId: string | null; isTarget: boole
               closedSides={shelf.closedSides}
             />
 
-            {/* Labels - Front */}
+            {/* Label - Show only on camera-facing side */}
             {frontConfig && (
-              <group position={[0, UNIT_HEIGHT / 2 + 0.3, bay.depth / 2 - 0.25]}>
-                <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
-                  {frontConfig.name}
-                </Text>
-              </group>
+              <CameraFacingLabel
+                shelfName={frontConfig.name}
+                width={unitWidth - 0.4}
+                depth={bay.depth - 0.5}
+                height={UNIT_HEIGHT}
+                closedSides={shelf.closedSides}
+              />
             )}
           </group>
         );
