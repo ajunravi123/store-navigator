@@ -315,9 +315,10 @@ const App: React.FC = () => {
               const bayId = product.bayId || product.departmentId;
               const bay = bayId ? findBayById(storeConfig, bayId) : undefined;
               const isAIMatch = aiHighlightedIds.includes(product.id);
+              const isOutOfStock = (product.stockCount ?? 0) === 0;
 
               return (
-                <div key={product.id} className={`group bg-white rounded-[2rem] border p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col ${isAIMatch ? 'border-indigo-400 ring-4 ring-indigo-50 shadow-indigo-50' : 'border-slate-100'}`}>
+                <div key={product.id} className={`group bg-white rounded-[2rem] border p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col ${isAIMatch ? 'border-indigo-400 ring-4 ring-indigo-50 shadow-indigo-50' : 'border-slate-100'} ${isOutOfStock ? 'opacity-50' : ''}`}>
                   <div className="aspect-square rounded-2xl overflow-hidden mb-6 bg-slate-50 border border-slate-50 relative">
                     <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute top-3 left-3 px-3 py-1 bg-white/95 backdrop-blur rounded-lg shadow-sm border border-slate-100">
