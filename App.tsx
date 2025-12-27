@@ -5,6 +5,7 @@ import { DEFAULT_STORE_CONFIG, DEFAULT_PRODUCTS } from './constants';
 import Store3D from './components/Store3D';
 import Settings from './components/Settings';
 import AIConsultant from './components/AIConsultant';
+import RecommendedProducts from './components/RecommendedProducts';
 import { findShortestPath } from './services/pathfinder';
 import { findBayById, getAllFloors, migrateStoreConfig, getProductLocation, getAisleColor } from './utils/storeHelpers';
 import { Search, Navigation2, X, Info, Target, Layers, DoorOpen, Navigation, Settings as SettingsIcon, LayoutGrid, Bot, Package } from 'lucide-react';
@@ -328,7 +329,12 @@ const App: React.FC = () => {
                     )}
                   </div>
                   <div className="flex-1 mb-6">
-                    <h3 className="text-lg font-black text-slate-900 leading-tight mb-4 group-hover:text-blue-600 transition-colors">{product.name}</h3>
+                    <h3 className="text-lg font-black text-slate-900 leading-tight mb-2 group-hover:text-blue-600 transition-colors">{product.name}</h3>
+                    {product.price !== undefined && product.price !== null && (
+                      <div className="mb-4">
+                        <span className="text-2xl font-black text-slate-900">${product.price.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-slate-500 border border-slate-100 w-fit">
                         <Layers size={14} className="text-indigo-400" />
@@ -405,65 +411,112 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex-1 relative flex flex-col md:flex-row overflow-hidden">
-              <div className="w-full md:w-[280px] lg:w-[340px] bg-white border-b md:border-b-0 md:border-r border-slate-100 flex flex-col shrink-0 overflow-hidden z-10">
-                <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
-                  <div className="flex items-center gap-2 text-blue-600 mb-10">
+              <div className="w-full md:w-[280px] lg:w-[320px] bg-white border-b md:border-b-0 md:border-r border-slate-100 flex flex-col shrink-0 overflow-hidden z-10">
+                <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
+                  <div className="flex items-center gap-2 text-blue-600 mb-6">
                     <Navigation size={18} />
-                    <span className="font-black text-[11px] uppercase tracking-[0.25em]">Walking Route</span>
+                    <span className="font-black text-xs uppercase tracking-wider">Walking Route</span>
                   </div>
-                  <div className="space-y-12 relative">
-                    <div className="absolute left-[21px] top-6 bottom-6 w-0.5 bg-slate-100 rounded-full" />
-                    <div className={`flex gap-5 relative transition-all duration-500 ${currentMapFloor === storeConfig.entrance.floor ? 'opacity-100' : 'opacity-25'}`}>
-                      <div className="w-11 h-11 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-xl z-10 shrink-0 border-4 border-white">
-                        <DoorOpen size={20} />
+                  <div className="space-y-6 relative">
+                    <div className="absolute left-[22px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-emerald-200 to-red-200 rounded-full" />
+                    <div className={`flex gap-4 relative transition-all duration-500 ${currentMapFloor === storeConfig.entrance.floor ? 'opacity-100' : 'opacity-25'}`}>
+                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg z-10 shrink-0 border-2 border-white">
+                        <DoorOpen size={18} />
                       </div>
-                      <div className="pt-1">
-                        <h5 className="font-black text-slate-900 text-[15px] mb-1 leading-none">Entrance Door</h5>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Floor {storeConfig.entrance.floor}</p>
+                      <div className="pt-0.5 flex-1">
+                        <h5 className="font-black text-slate-900 text-base mb-1.5 leading-tight">Entrance Door</h5>
+                        <div className="bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100">
+                          <p className="text-[10px] text-slate-900 font-black uppercase tracking-wide">Floor {storeConfig.entrance.floor}</p>
+                        </div>
                       </div>
                     </div>
-                    <div className={`flex gap-5 relative transition-all duration-500 ${currentMapFloor === targetBay?.floor ? 'opacity-100' : 'opacity-25'}`}>
-                      <div className="w-11 h-11 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-xl z-10 shrink-0 border-4 border-white">
-                        <Target size={20} />
+                    <div className={`flex gap-4 relative transition-all duration-500 ${currentMapFloor === targetBay?.floor ? 'opacity-100' : 'opacity-25'}`}>
+                      <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-lg z-10 shrink-0 border-2 border-white">
+                        <Target size={18} />
                       </div>
-                      <div className="pt-1">
-                        <h5 className="font-black text-slate-900 text-[15px] mb-1 leading-none">{activeProduct.name}</h5>
+                      <div className="pt-0.5 flex-1">
+                        <h5 className="font-black text-slate-900 text-base mb-2 leading-tight">{activeProduct.name}</h5>
+                        {activeProduct.price !== undefined && activeProduct.price !== null && (
+                          <div className="mb-3">
+                            <p className="text-xl font-black text-slate-900">${activeProduct.price.toFixed(2)}</p>
+                          </div>
+                        )}
+                        {activeProduct.description && (
+                          <div className="mb-3 bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
+                            <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider mb-1">Description</p>
+                            <p className="text-xs text-slate-700 font-medium leading-relaxed">{activeProduct.description}</p>
+                          </div>
+                        )}
                         {productLocation ? (
-                          <div className="space-y-1">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                              {productLocation.zone.name} → <span style={{ color: getAisleColor(productLocation.aisle.id) }}>{productLocation.aisle.name}</span> → {productLocation.bay.name}
-                              {productLocation.shelf && ` → ${productLocation.shelf.name}`}
-                            </p>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-[9px] text-slate-300 font-semibold uppercase tracking-wider">
-                                Floor {targetBay?.floor}
-                              </p>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">•</span>
-                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                                {activeProduct.category}
-                              </p>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">•</span>
-                              <div className={`flex items-center gap-1 ${(activeProduct.stockCount ?? 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                <Package size={10} />
-                                <p className="text-[9px] font-bold uppercase tracking-wider">
+                          <div className="space-y-2">
+                            {/* Location Hierarchy Cards */}
+                            <div className="space-y-1.5">
+                              <div className="bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
+                                <p className="text-[9px] text-blue-600 font-black uppercase tracking-wider mb-0.5">Zone</p>
+                                <p className="text-xs font-bold text-slate-900">{productLocation.zone.name}</p>
+                              </div>
+                              <div className="bg-purple-50 rounded-lg px-3 py-2 border" style={{ borderColor: `${getAisleColor(productLocation.aisle.id)}40` }}>
+                                <p className="text-[9px] font-black uppercase tracking-wider mb-0.5" style={{ color: getAisleColor(productLocation.aisle.id) }}>Aisle</p>
+                                <p className="text-xs font-bold text-slate-900">{productLocation.aisle.name}</p>
+                              </div>
+                              <div className="bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
+                                <p className="text-[9px] text-amber-600 font-black uppercase tracking-wider mb-0.5">Bay</p>
+                                <p className="text-xs font-bold text-slate-900">{productLocation.bay.name}</p>
+                              </div>
+                              {productLocation.shelf && (
+                                <div className="bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
+                                  <p className="text-[9px] text-emerald-600 font-black uppercase tracking-wider mb-0.5">Shelf</p>
+                                  <p className="text-xs font-bold text-slate-900">{productLocation.shelf.name}</p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Additional Info */}
+                            <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <Layers size={12} className="text-slate-500" />
+                                <p className="text-[10px] text-slate-600 font-bold uppercase tracking-wide">Floor {targetBay?.floor}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Package size={12} className={`${(activeProduct.stockCount ?? 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`} />
+                                <p className={`text-[10px] font-bold uppercase tracking-wide ${(activeProduct.stockCount ?? 0) > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                                   Stock: {activeProduct.stockCount ?? 0}
                                 </p>
+                              </div>
+                              <div className="pt-1.5 border-t border-slate-200">
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Category</p>
+                                <p className="text-[10px] text-slate-700 font-semibold">{activeProduct.category}</p>
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-1">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bay {activeProduct.bayId || activeProduct.departmentId}</p>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                                {activeProduct.category}
-                              </p>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">•</span>
-                              <div className={`flex items-center gap-1 ${(activeProduct.stockCount ?? 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                <Package size={10} />
-                                <p className="text-[9px] font-bold uppercase tracking-wider">
+                          <div className="space-y-2">
+                            {activeProduct.price !== undefined && activeProduct.price !== null && (
+                              <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider mb-0.5">Price</p>
+                                <p className="text-lg font-black text-slate-900">${activeProduct.price.toFixed(2)}</p>
+                              </div>
+                            )}
+                            {activeProduct.description && (
+                              <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider mb-1">Description</p>
+                                <p className="text-xs text-slate-700 font-medium leading-relaxed">{activeProduct.description}</p>
+                              </div>
+                            )}
+                            <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
+                              <p className="text-[9px] text-slate-500 font-black uppercase tracking-wider mb-0.5">Bay</p>
+                              <p className="text-xs font-bold text-slate-900">{activeProduct.bayId || activeProduct.departmentId}</p>
+                            </div>
+                            <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <Package size={12} className={`${(activeProduct.stockCount ?? 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`} />
+                                <p className={`text-[10px] font-bold uppercase tracking-wide ${(activeProduct.stockCount ?? 0) > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                                   Stock: {activeProduct.stockCount ?? 0}
                                 </p>
+                              </div>
+                              <div className="pt-1.5 border-t border-slate-200">
+                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Category</p>
+                                <p className="text-[10px] text-slate-700 font-semibold">{activeProduct.category}</p>
                               </div>
                             </div>
                           </div>
@@ -471,9 +524,20 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Recommended Products Section */}
+                  {activeProduct && (
+                    <RecommendedProducts
+                      currentProduct={activeProduct}
+                      allProducts={products}
+                      onNavigateToProduct={(product) => {
+                        startNavigation(product);
+                      }}
+                    />
+                  )}
                 </div>
-                <div className="p-8 shrink-0">
-                  <button onClick={closeNavigation} className="w-full py-4.5 bg-slate-950 text-white rounded-2xl font-black text-xs hover:bg-slate-800 transition-all shadow-xl active:scale-95 uppercase tracking-widest">
+                <div className="p-5 shrink-0 border-t border-slate-100">
+                  <button onClick={closeNavigation} className="w-full py-3 bg-slate-950 text-white rounded-xl font-black text-xs hover:bg-slate-800 transition-all shadow-xl active:scale-95 uppercase tracking-wider">
                     Dismiss Map
                   </button>
                 </div>

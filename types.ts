@@ -64,6 +64,8 @@ export interface Product {
   levels?: number[];
   sku?: string;
   stockCount?: number;
+  price?: number; // Price in dollars (optional)
+  description?: string; // Product description (optional)
   // Legacy fields for backward compatibility
   departmentId?: string;
 }

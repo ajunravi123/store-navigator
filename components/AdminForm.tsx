@@ -972,6 +972,28 @@ const AdminForm: React.FC<AdminFormProps> = ({
                                                             />
                                                         </div>
                                                         <div>
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Price (USD) <span className="text-slate-300 font-normal">(Optional)</span></label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                min="0"
+                                                                value={product.price ?? ''}
+                                                                onChange={(e) => updateProduct(product.id, { price: e.target.value === '' ? undefined : parseFloat(e.target.value) || undefined })}
+                                                                className="text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-2xl px-5 py-3 focus:border-blue-500 outline-none w-full shadow-sm"
+                                                                placeholder="0.00"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Description <span className="text-slate-300 font-normal">(Optional)</span></label>
+                                                            <textarea
+                                                                value={product.description || ''}
+                                                                onChange={(e) => updateProduct(product.id, { description: e.target.value || undefined })}
+                                                                className="text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-2xl px-5 py-3 focus:border-blue-500 outline-none w-full shadow-sm resize-none"
+                                                                placeholder="Enter product description..."
+                                                                rows={3}
+                                                            />
+                                                        </div>
+                                                        <div>
                                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Remaining Stock Count</label>
                                                             <input
                                                                 type="number"
