@@ -1274,6 +1274,29 @@ const WalkingAvatar: React.FC<{
           <boxGeometry args={[0.38, 0.55, 0.22]} />
           <meshStandardMaterial color="#334155" roughness={0.7} />
         </mesh>
+        {/* Logo 'A' - positioned on the front of the shirt */}
+        <group position={[0, 1.35, 0.111]}>
+          <Text
+            fontSize={0.1}
+            color="#fbbf24"
+            fontWeight="black"
+            anchorX="center"
+            anchorY="middle"
+            fillOpacity={0.7}
+          >
+            A
+          </Text>
+          {/* Circular border around the letter */}
+          <mesh>
+            <ringGeometry args={[0.07, 0.075, 32]} />
+            <meshStandardMaterial color="#fbbf24" transparent opacity={0.4} side={THREE.DoubleSide} />
+          </mesh>
+          {/* Very faint background disk */}
+          <mesh position={[0, 0, -0.001]}>
+            <circleGeometry args={[0.075, 32]} />
+            <meshStandardMaterial color="#fbbf24" transparent opacity={0.1} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
         {/* Head & Neck */}
         <group position={[0, 1.6, 0]}>
           <mesh position={[0, 0.05, 0]} castShadow>
