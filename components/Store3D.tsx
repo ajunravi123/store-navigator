@@ -529,7 +529,8 @@ const CameraFacingLabel: React.FC<{
   depth: number;
   height: number;
   closedSides?: ('left' | 'right' | 'front' | 'back')[];
-}> = ({ shelfName, width, depth, height, closedSides }) => {
+  isTarget?: boolean;
+}> = ({ shelfName, width, depth, height, closedSides, isTarget }) => {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const [visibleSide, setVisibleSide] = useState<'front' | 'back' | 'left' | 'right' | null>(null);
@@ -589,28 +590,28 @@ const CameraFacingLabel: React.FC<{
     <group ref={groupRef}>
       {visibleSide === 'front' && (
         <group position={[0, labelY, depth / 2 - 0.6]}>
-          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
+          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000" material-depthTest={!isTarget} renderOrder={isTarget ? 100 : 0}>
             {shelfName}
           </Text>
         </group>
       )}
       {visibleSide === 'back' && (
         <group position={[0, labelY, -depth / 2 + 0.6]} rotation={[0, Math.PI, 0]}>
-          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
+          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000" material-depthTest={!isTarget} renderOrder={isTarget ? 100 : 0}>
             {shelfName}
           </Text>
         </group>
       )}
       {visibleSide === 'left' && (
         <group position={[-width / 2 + 0.6, labelY, 0]} rotation={[0, -Math.PI / 2, 0]}>
-          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
+          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000" material-depthTest={!isTarget} renderOrder={isTarget ? 100 : 0}>
             {shelfName}
           </Text>
         </group>
       )}
       {visibleSide === 'right' && (
         <group position={[width / 2 - 0.6, labelY, 0]} rotation={[0, Math.PI / 2, 0]}>
-          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000">
+          <Text fontSize={0.3} color="#ffffff" fontWeight="black" outlineWidth={0.03} outlineColor="#000000" material-depthTest={!isTarget} renderOrder={isTarget ? 100 : 0}>
             {shelfName}
           </Text>
         </group>
@@ -988,6 +989,7 @@ const BayComponent: React.FC<{ bay: Bay; aisleId: string | null; isTarget: boole
                 depth={position.shelfDepth}
                 height={UNIT_HEIGHT}
                 closedSides={shelfClosedSides}
+                isTarget={frontConfig.isTarget}
               />
             )}
           </group>
@@ -1065,7 +1067,9 @@ const WalkingAvatar: React.FC<{
   currentFloor: number;
   config: StoreConfig;
   onPositionUpdate?: (position: THREE.Vector3 | null) => void;
-}> = ({ points, currentFloor, config, onPositionUpdate }) => {
+  onLoopRestart?: () => void;
+  onStatusChange?: (isWaiting: boolean, forward: THREE.Vector3) => void;
+}> = ({ points, currentFloor, config, onPositionUpdate, onLoopRestart, onStatusChange }) => {
   const group = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Group>(null);
   const rightLeg = useRef<THREE.Group>(null);
@@ -1073,6 +1077,8 @@ const WalkingAvatar: React.FC<{
   const rightArm = useRef<THREE.Group>(null);
   const avatarPositionRef = useRef<THREE.Vector3 | null>(null);
   const lastFootstepTimeRef = useRef(0);
+  const lastCycleRef = useRef(-1);
+  const wasWaitingRef = useRef(false);
 
   const floorPoints = useMemo(() => points.filter(p => p.floor === currentFloor), [points, currentFloor]);
 
@@ -1089,10 +1095,21 @@ const WalkingAvatar: React.FC<{
   useFrame((state) => {
     if (!group.current || floorPoints.length < 2) return;
 
-    // Looping walking path (12s walk + 3s wait)
+    // Looping walking path (12s walk + 3s wait) = 15s cycle
     const cycleTime = 15;
+    const currentCycle = Math.floor(state.clock.elapsedTime / cycleTime);
+
+    // Detect loop restart
+    if (lastCycleRef.current !== -1 && currentCycle > lastCycleRef.current) {
+      if (onLoopRestart) onLoopRestart();
+      if (onStatusChange) onStatusChange(false, new THREE.Vector3(0, 0, 1)); // Reset status
+      wasWaitingRef.current = false;
+    }
+    lastCycleRef.current = currentCycle;
+
     const t = (state.clock.elapsedTime % cycleTime) / cycleTime;
-    const walkProgress = Math.min(1, t * (cycleTime / 12)); // Walk for first 12s
+    const walkDurationRatio = 12 / 15; // 0.8
+    const walkProgress = Math.min(1, t / walkDurationRatio); // Walk for first 12s
 
     const totalPoints = floorPoints.length;
     const pathTotalDist = totalPoints - 1;
@@ -1136,6 +1153,19 @@ const WalkingAvatar: React.FC<{
       // Notify parent of position update
       if (onPositionUpdate) {
         onPositionUpdate(currentPos);
+      }
+
+      // Check walking status
+      const isWaiting = walkProgress >= 1;
+      if (isWaiting !== wasWaitingRef.current) {
+        wasWaitingRef.current = isWaiting;
+        if (onStatusChange) {
+          // Calculate forward vector from last segment
+          const lastP = floorPoints[floorPoints.length - 1];
+          const prevP = floorPoints[floorPoints.length - 2];
+          const forward = new THREE.Vector3(lastP.x - prevP.x, 0, lastP.z - prevP.z).normalize();
+          onStatusChange(isWaiting, forward);
+        }
       }
 
       const lookTarget = (walkProgress < 1) ? new THREE.Vector3(p2.x, 0, p2.z) : new THREE.Vector3(floorPoints[totalPoints - 1].x, 0, floorPoints[totalPoints - 1].z);
@@ -1316,7 +1346,13 @@ const ProductMarker: React.FC<{ product: Product; bay: Bay; type?: 'default' | '
   );
 };
 
-const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vector3 | null }> = ({ config, targetPoint }) => {
+const CameraController: React.FC<{
+  config: StoreConfig;
+  targetPoint: THREE.Vector3 | null;
+  avatarPosition: THREE.Vector3 | null;
+  loopRestartTrigger: number;
+  avatarStatus: { isWaiting: boolean; forward: THREE.Vector3 };
+}> = ({ config, targetPoint, avatarPosition, loopRestartTrigger, avatarStatus }) => {
   const { camera, controls } = useThree();
   const centerX = config.gridSize.width / 2;
   const centerZ = config.gridSize.depth / 2;
@@ -1324,8 +1360,12 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
   const lastTargetKeyRef = useRef<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const userInteractingRef = useRef(false);
+  const hasUserInteractedRef = useRef(false);
   const interactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const targetPointRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const lastInteractionTimeRef = useRef(Date.now()); // Start with 3s delay on load
+  const isResettingRef = useRef(true); // Smooth reset on load
+  const prevTriggerRef = useRef(loopRestartTrigger);
 
   const defaultTarget = useMemo(() => new THREE.Vector3(0, 0, 0), []);
   const defaultPosition = useMemo(() => {
@@ -1341,6 +1381,7 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
     // Track user interaction
     const onStart = () => {
       userInteractingRef.current = true;
+      hasUserInteractedRef.current = true;
       setIsAnimating(false); // Stop auto-animation when user interacts
       if (interactionTimeoutRef.current) {
         clearTimeout(interactionTimeoutRef.current);
@@ -1354,6 +1395,7 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
       }
       interactionTimeoutRef.current = setTimeout(() => {
         userInteractingRef.current = false;
+        lastInteractionTimeRef.current = Date.now();
       }, 2000); // 2 second delay after user stops interacting
     };
 
@@ -1382,20 +1424,91 @@ const CameraController: React.FC<{ config: StoreConfig; targetPoint: THREE.Vecto
     }
   }, [targetPoint, defaultTarget]);
 
+  // Handle loop restart trigger - smooth reset to default view
+  useEffect(() => {
+    if (loopRestartTrigger !== prevTriggerRef.current) {
+      isResettingRef.current = true;
+      // hasUserInteractedRef.current remains true if it was set - do NOT clear it
+      lastInteractionTimeRef.current = Date.now(); // Reset idle timer
+      prevTriggerRef.current = loopRestartTrigger;
+    }
+  }, [loopRestartTrigger]);
+
   useFrame(() => {
-    if (!controls || !isAnimating || userInteractingRef.current) return;
+    if (!controls || userInteractingRef.current) return;
 
-    const target = targetPoint ? targetPointRef.current : defaultTarget;
-    const posTarget = targetPoint
-      ? new THREE.Vector3(targetPoint.x, targetPoint.y + 8, targetPoint.z + 8)
-      : defaultPosition;
+    const orbitControls = controls as any;
 
-    (controls as any).target.lerp(target, 0.1);
-    camera.position.lerp(posTarget, 0.1);
-    (controls as any).update();
+    // Priority 0: Reset to default view (on load or loop restart)
+    // ONLY if user has NOT interacted yet. If they have, we respect their manual view.
+    if (isResettingRef.current && !hasUserInteractedRef.current) {
+      orbitControls.target.lerp(defaultTarget, 0.05);
+      camera.position.lerp(defaultPosition, 0.05);
+      orbitControls.update();
 
-    if (camera.position.distanceTo(posTarget) < 0.1 && (controls as any).target.distanceTo(target) < 0.1) {
-      setIsAnimating(false);
+      if (camera.position.distanceTo(defaultPosition) < 0.5 && orbitControls.target.distanceTo(defaultTarget) < 0.5) {
+        isResettingRef.current = false;
+      }
+      return;
+    } else if (isResettingRef.current && hasUserInteractedRef.current) {
+      // If we flagged for reset but user interacted, cancel the reset flag
+      isResettingRef.current = false;
+    }
+
+    const timeSinceInteraction = Date.now() - lastInteractionTimeRef.current;
+    const isIdle = timeSinceInteraction > 3000; // 3 seconds idle
+
+    // Priority 1: Animate to specific target point (product/shelf)
+    if (isAnimating) {
+      const target = targetPoint ? targetPointRef.current : defaultTarget;
+      const posTarget = targetPoint
+        ? new THREE.Vector3(targetPoint.x, targetPoint.y + 8, targetPoint.z + 8)
+        : defaultPosition;
+
+      orbitControls.target.lerp(target, 0.1);
+      camera.position.lerp(posTarget, 0.1);
+      orbitControls.update();
+
+      if (camera.position.distanceTo(posTarget) < 0.1 && orbitControls.target.distanceTo(target) < 0.1) {
+        setIsAnimating(false);
+        lastInteractionTimeRef.current = Date.now(); // Reset idle timer after reaching target
+      }
+    }
+    // Priority 2: Follow avatar when idle - BUT ONLY IF USER HAS NEVER INTERACTED
+    else if (isIdle && avatarPosition && !hasUserInteractedRef.current) {
+      // Convert avatar position (store coords) to world coords
+      const worldAvatarPos = new THREE.Vector3(
+        avatarPosition.x - centerX,
+        avatarPosition.y,
+        avatarPosition.z - centerZ
+      );
+
+      // Focus on upper body for a natural view
+      const target = new THREE.Vector3(worldAvatarPos.x, worldAvatarPos.y + 1.5, worldAvatarPos.z);
+      // Ideally positioned slightly above head level and behind - "perfect" immersive view
+      let posTarget = new THREE.Vector3(worldAvatarPos.x, worldAvatarPos.y + 2.8, worldAvatarPos.z + 5);
+
+      // If reached destination, rotate camera to align with avatar facing direction
+      if (avatarStatus.isWaiting && !isResettingRef.current) {
+        // Position behind avatar (-forward)
+        // Adjust for world rotation (if store is rotated? assuming world aligned)
+        // Store coordinates are already world aligned in this scene logic (just offsets)
+        // avatarStatus.forward is from store coordinates, so direction is same in world relative space
+
+        const distance = 4.5;
+        const height = 2.0;
+
+        posTarget = new THREE.Vector3(
+          worldAvatarPos.x - avatarStatus.forward.x * distance,
+          worldAvatarPos.y + height,
+          worldAvatarPos.z - avatarStatus.forward.z * distance
+        );
+      }
+
+      // Smooth, slow cinematic transition
+      orbitControls.target.lerp(target, 0.02);
+      camera.position.lerp(posTarget, 0.02);
+      orbitControls.update();
     }
   });
 
@@ -1513,16 +1626,34 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
     });
   }, [allProducts, showAllProducts, config, currentFloor, targetProduct]);
 
+  const [restartTrigger, setRestartTrigger] = useState(0);
+  const [avatarStatus, setAvatarStatus] = useState({ isWaiting: false, forward: new THREE.Vector3(0, 0, 1) });
+
+  const handleLoopRestart = () => {
+    setRestartTrigger(prev => prev + 1);
+    setAvatarStatus({ isWaiting: false, forward: new THREE.Vector3(0, 0, 1) });
+  };
+
+  const handleStatusChange = (isWaiting: boolean, forward: THREE.Vector3) => {
+    setAvatarStatus({ isWaiting, forward });
+  };
+
   return (
     <>
       <PerspectiveCamera makeDefault fov={40} />
       <ZoomToPointerControls
         minDistance={3}
         maxDistance={300}
-        maxPolarAngle={Math.PI / 2.2}
+        maxPolarAngle={Math.PI / 2.1} // Standard angle constraint
         storeConfig={config}
       />
-      <CameraController config={config} targetPoint={disableFocus ? null : cameraTargetPoint} />
+      <CameraController
+        config={config}
+        targetPoint={disableFocus ? null : cameraTargetPoint}
+        avatarPosition={avatarPosition}
+        loopRestartTrigger={restartTrigger}
+        avatarStatus={avatarStatus}
+      />
       <ambientLight intensity={0.2} />
       <pointLight
         position={[0, 20, 0]}
@@ -1711,6 +1842,8 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
             currentFloor={currentFloor}
             config={config}
             onPositionUpdate={setAvatarPosition}
+            onLoopRestart={handleLoopRestart}
+            onStatusChange={handleStatusChange}
           />
 
           {floorProducts.map(p => {
@@ -1731,7 +1864,15 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
                   <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={3} />
                 </mesh>
                 <Billboard position={[0, 1.5, 0]}>
-                  <Text fontSize={1} color="#dc2626" fontWeight="black" outlineWidth={0.05} outlineColor="#ffffff">
+                  <Text
+                    fontSize={1}
+                    color="#dc2626"
+                    fontWeight="black"
+                    outlineWidth={0.05}
+                    outlineColor="#ffffff"
+                    material-depthTest={false}
+                    renderOrder={200}
+                  >
                     {targetProduct.name.toUpperCase()}
                   </Text>
                 </Billboard>
