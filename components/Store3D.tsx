@@ -522,6 +522,60 @@ const generateProductTexture = (baseColor: string, seed: number = 0): THREE.Canv
   return texture;
 };
 
+// Generate glass tile texture for walls with enhanced visibility
+const generateGlassTileTexture = (): THREE.CanvasTexture => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  // Clear canvas
+  ctx.clearRect(0, 0, 512, 512);
+
+  const tileSize = 64;
+  const numTiles = 512 / tileSize;
+
+  for (let i = 0; i < numTiles; i++) {
+    for (let j = 0; j < numTiles; j++) {
+      const x = i * tileSize;
+      const y = j * tileSize;
+
+      // Tile background - slightly more opaque and blue-tinted for visibility
+      const gradient = ctx.createLinearGradient(x, y, x + tileSize, y + tileSize);
+      gradient.addColorStop(0, 'rgba(230, 240, 255, 0.5)'); // More opaque
+      gradient.addColorStop(1, 'rgba(180, 200, 230, 0.3)');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+
+      // Pronounced tile borders
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+
+      // Bottom/right shadow for tiles to give depth
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.beginPath();
+      ctx.moveTo(x + tileSize - 2, y + 2);
+      ctx.lineTo(x + tileSize - 2, y + tileSize - 2);
+      ctx.lineTo(x + 2, y + tileSize - 2);
+      ctx.stroke();
+
+      // Reflective highlight streaks
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.beginPath();
+      ctx.moveTo(x + 10, y + 10);
+      ctx.lineTo(x + tileSize - 10, y + tileSize - 10);
+      ctx.stroke();
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = 16;
+  return texture;
+};
+
 // Component to show label only on camera-facing side
 const CameraFacingLabel: React.FC<{
   shelfName: string;
@@ -1520,6 +1574,18 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
   const centerZ = config.gridSize.depth / 2;
   const [avatarPosition, setAvatarPosition] = useState<THREE.Vector3 | null>(null);
 
+  const glassTileTextureWidth = useMemo(() => {
+    const tex = generateGlassTileTexture();
+    tex.repeat.set(config.gridSize.width / 1.0, 8); // Denser tiles for better visibility
+    return tex;
+  }, [config.gridSize.width]);
+
+  const glassTileTextureDepth = useMemo(() => {
+    const tex = generateGlassTileTexture();
+    tex.repeat.set(config.gridSize.depth / 1.0, 8); // Denser tiles for better visibility
+    return tex;
+  }, [config.gridSize.depth]);
+
   // Reset avatar position when path changes
   useEffect(() => {
     setAvatarPosition(null);
@@ -1736,60 +1802,86 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
             opacity={0.4}
           />
 
-          {/* Transparent walls at store boundary - only visible from inside */}
-          <group renderOrder={-1}>
-            {/* Left wall (at x=0) - back face faces inward */}
-            <mesh position={[0, 5, config.gridSize.depth / 2]} rotation={[0, -Math.PI / 2, 0]} renderOrder={-1}>
-              <planeGeometry args={[config.gridSize.depth, 10]} />
+          {/* Glass tile walls at store boundary - only visible from inside */}
+          <group>
+            {/* Structural base frame for walls (makes them feel grounded and visible) */}
+            <mesh position={[centerX, 0.25, 0]}>
+              <boxGeometry args={[config.gridSize.width, 0.5, 0.4]} />
+              <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
+            </mesh>
+            <mesh position={[centerX, 0.25, config.gridSize.depth]}>
+              <boxGeometry args={[config.gridSize.width, 0.5, 0.4]} />
+              <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
+            </mesh>
+            <mesh position={[0, 0.25, centerZ]}>
+              <boxGeometry args={[0.4, 0.5, config.gridSize.depth]} />
+              <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
+            </mesh>
+            <mesh position={[config.gridSize.width, 0.25, centerZ]}>
+              <boxGeometry args={[0.4, 0.5, config.gridSize.depth]} />
+              <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
+            </mesh>
+
+            {/* Left wall (at x=0) */}
+            <mesh position={[0, 6, config.gridSize.depth / 2]} rotation={[0, -Math.PI / 2, 0]}>
+              <planeGeometry args={[config.gridSize.depth, 12]} />
               <meshStandardMaterial
-                color="#cbd5e1"
+                map={glassTileTextureDepth}
+                color="#f8fafc"
                 transparent
-                opacity={0.2}
+                opacity={0.65}
                 side={THREE.BackSide}
-                roughness={0.4}
-                metalness={0.1}
+                roughness={0.01}
+                metalness={0.6}
+                envMapIntensity={2}
                 depthWrite={false}
               />
             </mesh>
 
-            {/* Right wall (at x=width) - back face faces inward */}
-            <mesh position={[config.gridSize.width, 5, config.gridSize.depth / 2]} rotation={[0, Math.PI / 2, 0]} renderOrder={-1}>
-              <planeGeometry args={[config.gridSize.depth, 10]} />
+            {/* Right wall (at x=width) */}
+            <mesh position={[config.gridSize.width, 6, config.gridSize.depth / 2]} rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[config.gridSize.depth, 12]} />
               <meshStandardMaterial
-                color="#cbd5e1"
+                map={glassTileTextureDepth}
+                color="#f8fafc"
                 transparent
-                opacity={0.2}
+                opacity={0.65}
                 side={THREE.BackSide}
-                roughness={0.4}
-                metalness={0.1}
+                roughness={0.01}
+                metalness={0.6}
+                envMapIntensity={2}
                 depthWrite={false}
               />
             </mesh>
 
-            {/* Back wall (at z=0) - back face faces inward */}
-            <mesh position={[config.gridSize.width / 2, 5, 0]} rotation={[0, Math.PI, 0]} renderOrder={-1}>
-              <planeGeometry args={[config.gridSize.width, 10]} />
+            {/* Back wall (at z=0) */}
+            <mesh position={[config.gridSize.width / 2, 6, 0]} rotation={[0, Math.PI, 0]}>
+              <planeGeometry args={[config.gridSize.width, 12]} />
               <meshStandardMaterial
-                color="#cbd5e1"
+                map={glassTileTextureWidth}
+                color="#f8fafc"
                 transparent
-                opacity={0.2}
+                opacity={0.65}
                 side={THREE.BackSide}
-                roughness={0.4}
-                metalness={0.1}
+                roughness={0.01}
+                metalness={0.6}
+                envMapIntensity={2}
                 depthWrite={false}
               />
             </mesh>
 
-            {/* Front wall (at z=depth) - back face faces inward */}
-            <mesh position={[config.gridSize.width / 2, 5, config.gridSize.depth]} rotation={[0, 0, 0]} renderOrder={-1}>
-              <planeGeometry args={[config.gridSize.width, 10]} />
+            {/* Front wall (at z=depth) */}
+            <mesh position={[config.gridSize.width / 2, 6, config.gridSize.depth]} rotation={[0, 0, 0]}>
+              <planeGeometry args={[config.gridSize.width, 12]} />
               <meshStandardMaterial
-                color="#cbd5e1"
+                map={glassTileTextureWidth}
+                color="#f8fafc"
                 transparent
-                opacity={0.2}
+                opacity={0.65}
                 side={THREE.BackSide}
-                roughness={0.4}
-                metalness={0.1}
+                roughness={0.01}
+                metalness={0.6}
+                envMapIntensity={2}
                 depthWrite={false}
               />
             </mesh>
