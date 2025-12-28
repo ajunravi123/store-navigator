@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { Product, AIRecommendation } from '../types';
 import { Bot, Loader2, ArrowRight, Sparkles } from 'lucide-react';
@@ -9,19 +9,62 @@ interface RecommendedProductsProps {
   onNavigateToProduct: (product: Product) => void;
 }
 
-const RecommendedProducts: React.FC<RecommendedProductsProps> = ({ 
-  currentProduct, 
-  allProducts, 
-  onNavigateToProduct 
+const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
+  currentProduct,
+  allProducts,
+  onNavigateToProduct
 }) => {
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<AIRecommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loading && recommendation && recommendation.productIds.length > 0) {
+      // Small timeout to allow the DOM to update with new content and layout to settle
+      const timeout = setTimeout(() => {
+        if (containerRef.current) {
+          // Find the scrollable container (marked with custom-scrollbar in App.tsx)
+          const scrollableParent = containerRef.current.closest('.custom-scrollbar');
+          if (scrollableParent) {
+            const start = scrollableParent.scrollTop;
+            const target = scrollableParent.scrollHeight - scrollableParent.clientHeight;
+
+            // If already at or near bottom, no need to scroll
+            if (target - start < 10) return;
+
+            const duration = 2500; // 2.5 seconds for a nice, slow, deliberate scroll
+            const startTime = performance.now();
+
+            const animate = (currentTime: number) => {
+              const elapsed = currentTime - startTime;
+              const progress = Math.min(elapsed / duration, 1);
+
+              // Smooth easing function (easeInOutCubic) for a professional feel
+              const easeProgress = progress < 0.5
+                ? 4 * progress * progress * progress
+                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+              scrollableParent.scrollTop = start + (target - start) * easeProgress;
+
+              if (progress < 1) {
+                requestAnimationFrame(animate);
+              }
+            };
+
+            requestAnimationFrame(animate);
+          }
+        }
+      }, 600);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, recommendation]);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (!currentProduct) return;
-      
+
       setLoading(true);
       setError(null);
       setRecommendation(null);
@@ -31,15 +74,15 @@ const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
 
         // Build product context excluding current product
         const otherProducts = allProducts.filter(p => p.id !== currentProduct.id);
-        
+
         // Create prompt based on product name and description
         const productContext = `Product: ${currentProduct.name}${currentProduct.description ? `. Description: ${currentProduct.description}` : ''}. Category: ${currentProduct.category}`;
-        
+
         const prompt = `Find products that are similar, complementary, or commonly purchased together with this product: "${productContext}". 
         Exclude the current product (ID: ${currentProduct.id}) from recommendations.
-        Products available: ${JSON.stringify(otherProducts.map(p => ({ 
-          id: p.id, 
-          name: p.name, 
+        Products available: ${JSON.stringify(otherProducts.map(p => ({
+          id: p.id,
+          name: p.name,
           category: p.category,
           description: p.description || ''
         })))}`;
@@ -52,9 +95,9 @@ const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
             responseSchema: {
               type: Type.OBJECT,
               properties: {
-                explanation: { 
-                  type: Type.STRING, 
-                  description: "A brief explanation of why these products are recommended (max 2 sentences)." 
+                explanation: {
+                  type: Type.STRING,
+                  description: "A brief explanation of why these products are recommended (max 2 sentences)."
                 },
                 productIds: {
                   type: Type.ARRAY,
@@ -69,12 +112,12 @@ const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
         });
 
         const result = JSON.parse(response.text || '{}') as AIRecommendation;
-        
+
         // Filter to ensure we only show products that exist and aren't the current product
-        const validProductIds = result.productIds.filter(id => 
+        const validProductIds = result.productIds.filter(id =>
           id !== currentProduct.id && otherProducts.some(p => p.id === id)
         );
-        
+
         setRecommendation({
           ...result,
           productIds: validProductIds.slice(0, 5) // Limit to 5 products
@@ -104,7 +147,7 @@ const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
   }
 
   return (
-    <div className="mt-8 pt-8 border-t border-slate-200">
+    <div ref={containerRef} className="mt-8 pt-8 border-t border-slate-200">
       <div className="flex items-center gap-2 mb-4">
         <div className="p-1.5 bg-indigo-50 rounded-lg">
           <Sparkles size={14} className="text-indigo-600" />
@@ -143,10 +186,10 @@ const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
                 className="w-full flex items-center gap-2.5 p-2.5 bg-white border border-slate-100 rounded-lg shadow-sm hover:border-indigo-300 hover:shadow-md hover:bg-indigo-50/30 transition-all text-left group"
               >
                 {product.image && (
-                  <img 
-                    src={product.image} 
+                  <img
+                    src={product.image}
                     alt={product.name}
-                    className="w-8 h-8 rounded-lg object-cover shrink-0" 
+                    className="w-8 h-8 rounded-lg object-cover shrink-0"
                   />
                 )}
                 <div className="flex-1 min-w-0">
