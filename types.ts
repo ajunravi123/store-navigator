@@ -80,4 +80,5 @@ export interface PathNode {
 export interface AIRecommendation {
   explanation: string;
   productIds: string[];
+  suggestedProductIds?: string[];
 }

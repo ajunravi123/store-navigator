@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { Product, AIRecommendation } from '../types';
 import { Bot, Loader2, ArrowRight, Sparkles } from 'lucide-react';
 
@@ -61,61 +60,33 @@ const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
     }
   }, [loading, recommendation]);
 
+  const lastProductRef = useRef<string | null>(null);
+
   useEffect(() => {
     const fetchRecommendations = async () => {
-      if (!currentProduct) return;
+      // Prevent fetching if it's the same product we just fetched for
+      if (!currentProduct || currentProduct.id === lastProductRef.current) return;
 
+      lastProductRef.current = currentProduct.id;
       setLoading(true);
       setError(null);
       setRecommendation(null);
 
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-        // Build product context excluding current product
-        const otherProducts = allProducts.filter(p => p.id !== currentProduct.id);
-
-        // Create prompt based on product name and description
-        const productContext = `Product: ${currentProduct.name}${currentProduct.description ? `. Description: ${currentProduct.description}` : ''}. Category: ${currentProduct.category}`;
-
-        const prompt = `Find products that are similar, complementary, or commonly purchased together with this product: "${productContext}". 
-        Exclude the current product (ID: ${currentProduct.id}) from recommendations.
-        Products available: ${JSON.stringify(otherProducts.map(p => ({
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          description: p.description || ''
-        })))}`;
-
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                explanation: {
-                  type: Type.STRING,
-                  description: "A brief explanation of why these products are recommended (max 2 sentences)."
-                },
-                productIds: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                  description: "List of 3-5 product IDs that are similar or complementary to the current product."
-                }
-              },
-              required: ["explanation", "productIds"]
-            },
-            systemInstruction: "You are a smart shopping assistant. Recommend products that are similar, complementary, or commonly bought together. Keep recommendations relevant and useful. Return 3-5 product IDs maximum."
-          }
+        const response = await fetch('/api/ai/recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productIds: [currentProduct.id]
+          })
         });
 
-        const result = JSON.parse(response.text || '{}') as AIRecommendation;
+        if (!response.ok) throw new Error('Recommendation request failed');
+        const result = await response.json() as AIRecommendation;
 
         // Filter to ensure we only show products that exist and aren't the current product
         const validProductIds = result.productIds.filter(id =>
-          id !== currentProduct.id && otherProducts.some(p => p.id === id)
+          id !== currentProduct.id && allProducts.some(p => p.id === id)
         );
 
         setRecommendation({
@@ -131,7 +102,7 @@ const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
     };
 
     fetchRecommendations();
-  }, [currentProduct.id, currentProduct.name, currentProduct.description, currentProduct.category, allProducts]);
+  }, [currentProduct.id, allProducts.length]);
 
   // Don't render if no recommendation and not loading
   if (!loading && !recommendation && !error) {

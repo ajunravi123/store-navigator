@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   // Use environment variable for API proxy target, fallback to localhost for development
   // In production, if VITE_API_URL is not set, use localhost since Express runs on same machine
   const apiTarget = env.VITE_API_URL || 'http://localhost:3001';
-  
+
   return {
     server: {
       port: 5173,
@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => {
                 res.writeHead(500, {
                   'Content-Type': 'application/json',
                 });
-                res.end(JSON.stringify({ 
+                res.end(JSON.stringify({
                   error: 'Proxy error: ' + err.message,
                   hint: 'Ensure Express server is running on port 3001'
                 }));
@@ -67,10 +67,6 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [react()],
-    define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

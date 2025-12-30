@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { StoreConfig, Product, PathNode } from './types';
 import { DEFAULT_STORE_CONFIG, DEFAULT_PRODUCTS } from './constants';
 import Store3D from './components/Store3D';
@@ -26,8 +26,13 @@ const App: React.FC = () => {
   const [aiHighlightedIds, setAiHighlightedIds] = useState<string[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
+  const hasFetchedRef = useRef(false);
+
   // Load data from server on mount
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
     const fetchData = async () => {
       try {
         const storeRes = await fetch('/api/store');
@@ -111,32 +116,32 @@ const App: React.FC = () => {
 
     const shelfIndex = targetBay.shelves.findIndex(s => s.id === activeProduct.shelfId);
     const validShelfIndex = shelfIndex === -1 ? 0 : shelfIndex;
-    
+
     const targetShelf = targetBay.shelves[validShelfIndex];
     const closedSides = targetShelf?.closedSides ?? [];
-    
+
     // Determine which sides are closed/open
     const isFrontClosed = closedSides.includes('front');
     const isBackClosed = closedSides === undefined || closedSides.length === 0 || closedSides.includes('back');
     const isLeftClosed = closedSides.includes('left');
     const isRightClosed = closedSides.includes('right');
-    
+
     const frontOpen = !isFrontClosed;
     const backOpen = !isBackClosed;
     const leftOpen = !isLeftClosed;
     const rightOpen = !isRightClosed;
-    
+
     const bayShape = targetBay.shape || 'rectangle';
     const safeDistance = 0.8;
-    
+
     let targetXFinal: number;
     let targetZ: number;
-    
+
     if (bayShape === 'circle') {
       // Circle bay: use shelf position calculation
       const shelfPositions = calculateShelfPositions(targetBay);
       const shelfPos = shelfPositions[validShelfIndex] || shelfPositions[0];
-      
+
       if (!shelfPos) {
         // Fallback
         targetXFinal = targetBay.column + targetBay.width / 2;
@@ -147,18 +152,18 @@ const App: React.FC = () => {
         const shelfWorldZ = shelfPos.worldZ;
         const shelfWidth = shelfPos.shelfWidth;
         const shelfDepth = shelfPos.shelfDepth;
-        
+
         const cosR = Math.cos(rotation);
         const sinR = Math.sin(rotation);
-        
+
         // Calculate distances from bay edge (circle perimeter) to each open side
         const calculateSideDistance = (side: 'front' | 'back' | 'left' | 'right'): number => {
           const bayCenterX = targetBay.column + targetBay.width / 2;
           const bayCenterZ = targetBay.row + targetBay.depth / 2;
           const bayRadius = Math.min(targetBay.width, targetBay.depth) / 2;
-          
+
           let sideX: number, sideZ: number;
-          
+
           if (side === 'front') {
             sideX = shelfWorldX + (shelfDepth / 2) * sinR;
             sideZ = shelfWorldZ + (shelfDepth / 2) * cosR;
@@ -172,23 +177,23 @@ const App: React.FC = () => {
             sideX = shelfWorldX + (shelfWidth / 2) * cosR;
             sideZ = shelfWorldZ - (shelfWidth / 2) * sinR;
           }
-          
+
           // Distance from bay edge (circle perimeter)
           // Find closest point on circle perimeter to the side face point
           const dx = sideX - bayCenterX;
           const dz = sideZ - bayCenterZ;
           const distFromCenter = Math.hypot(dx, dz);
-          
+
           if (distFromCenter === 0) return bayRadius; // At center, distance is radius
-          
+
           // Closest point on circle perimeter
           const closestX = bayCenterX + (dx / distFromCenter) * bayRadius;
           const closestZ = bayCenterZ + (dz / distFromCenter) * bayRadius;
-          
+
           // Distance from side face to closest point on circle perimeter
           return Math.hypot(sideX - closestX, sideZ - closestZ);
         };
-        
+
         // Find best open side with minimal distance from bay edge
         const sideDistances = [
           { side: 'front' as const, dist: calculateSideDistance('front'), open: frontOpen },
@@ -196,12 +201,12 @@ const App: React.FC = () => {
           { side: 'left' as const, dist: calculateSideDistance('left'), open: leftOpen },
           { side: 'right' as const, dist: calculateSideDistance('right'), open: rightOpen }
         ];
-        
+
         const openSides = sideDistances.filter(s => s.open);
-        const bestSide = openSides.length > 0 
+        const bestSide = openSides.length > 0
           ? openSides.sort((a, b) => a.dist - b.dist)[0].side
           : 'front'; // Fallback
-        
+
         // Calculate endpoint position on the best open side
         if (bestSide === 'front') {
           targetXFinal = shelfWorldX + (shelfDepth / 2 + safeDistance) * sinR;
@@ -227,18 +232,18 @@ const App: React.FC = () => {
 
       // X: Center of the specific shelf
       const targetX = targetBay.column + (unitWidth / 2) + (validShelfIndex * (unitWidth + shelfSpacing));
-      
+
       // Calculate exact face positions
       const shelfCenterZ = targetBay.row + targetBay.depth / 2;
       const shelfDepth = targetBay.depth - 0.5;
       const frontFaceZ = shelfCenterZ + shelfDepth / 2;
       const backFaceZ = shelfCenterZ - shelfDepth / 2;
-      
+
       // Calculate shelf X boundaries
       const shelfLeftX = targetX - unitWidth / 2;
       const shelfRightX = targetX + unitWidth / 2;
       const shelfCenterX = targetX;
-      
+
       targetZ = shelfCenterZ;
       targetXFinal = shelfCenterX;
 
@@ -287,7 +292,7 @@ const App: React.FC = () => {
     };
 
     const path = findShortestPath(storeConfig, storeConfig.entrance, target);
-    
+
     // Debug logging
     if (activeProduct.name === 'Frozen Pepperoni Pizza' || activeProduct.name === 'Vanilla Extract') {
       console.log(`Path calculation for ${activeProduct.name}:`);
@@ -295,8 +300,6 @@ const App: React.FC = () => {
       console.log('Target bay:', targetBay.id, 'Floor:', targetBay.floor);
       console.log('Shelf index:', validShelfIndex, 'Shelf ID:', activeProduct.shelfId);
       console.log('Closed sides:', closedSides);
-      console.log('Shelf bounds - Left:', shelfLeftX, 'Right:', shelfRightX);
-      console.log('Front face Z:', frontFaceZ, 'Back face Z:', backFaceZ, 'Center Z:', shelfCenterZ);
       console.log('Path length:', path.length);
       if (path.length > 0) {
         console.log('Path points:', path.slice(0, 5), '...', path.slice(-5));
@@ -434,16 +437,15 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => startNavigation(product)} 
+                  <button
+                    onClick={() => startNavigation(product)}
                     disabled={(product.stockCount ?? 0) === 0}
-                    className={`w-full py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-3 transition-all shadow-xl active:scale-95 ${
-                      (product.stockCount ?? 0) === 0 
-                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
-                        : isAIMatch 
-                          ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-                          : 'bg-slate-900 text-white hover:bg-blue-600'
-                    }`}
+                    className={`w-full py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-3 transition-all shadow-xl active:scale-95 ${(product.stockCount ?? 0) === 0
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      : isAIMatch
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        : 'bg-slate-900 text-white hover:bg-blue-600'
+                      }`}
                   >
                     <Navigation2 size={16} className="rotate-45" />
                     {(product.stockCount ?? 0) === 0 ? 'OUT OF STOCK' : 'GO TO LOCATION'}
@@ -560,7 +562,7 @@ const App: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                            
+
                             {/* Additional Info */}
                             <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 space-y-1.5">
                               <div className="flex items-center gap-1.5">
@@ -614,7 +616,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Recommended Products Section */}
                   {activeProduct && (
                     <RecommendedProducts
