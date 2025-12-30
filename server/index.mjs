@@ -4,10 +4,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI, Type } from "@google/genai";
-import * as dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
+// Environment variables are loaded natively by Node.js via --env-file flag
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
