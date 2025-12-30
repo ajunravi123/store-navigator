@@ -84,10 +84,10 @@ storeNavigatorRouter.get('/store', async (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.status(200).send(data);
     } catch (err) {
+        console.error('Error reading store data:', err);
         if (err.code === 'ENOENT') {
-            res.status(200).json({});
+            res.status(404).json({ error: 'Store configuration file not found. Please initialize store data in the Admin panel.' });
         } else {
-            console.error('Error reading store data:', err);
             res.status(500).json({ error: 'Failed to read store data' });
         }
     }
@@ -115,10 +115,10 @@ storeNavigatorRouter.get('/products', async (req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.status(200).send(data);
     } catch (err) {
+        console.error('Error reading products data:', err);
         if (err.code === 'ENOENT') {
-            res.status(200).send(JSON.stringify([]));
+            res.status(404).json({ error: 'Products data file not found. Please initialize products in the Admin panel.' });
         } else {
-            console.error('Error reading products data:', err);
             res.status(500).json({ error: 'Failed to read products data' });
         }
     }

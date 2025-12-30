@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { StoreConfig, Product, PathNode } from './types';
-import { DEFAULT_STORE_CONFIG, DEFAULT_PRODUCTS } from './constants';
 import Store3D from './components/Store3D';
 import LoadingScreen from './components/LoadingScreen';
 import Settings from './components/Settings';
@@ -21,6 +20,8 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
   const [currentMapFloor, setCurrentMapFloor] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
 
   // AI States
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
@@ -48,13 +49,21 @@ const App: React.FC = () => {
           setStoreConfig(migratedStore);
           setProducts(prodData);
         } else {
-          setStoreConfig(DEFAULT_STORE_CONFIG);
-          setProducts(DEFAULT_PRODUCTS);
+          let errorMsg = `Server error: Store (${storeRes.status}) Products (${prodRes.status})`;
+          try {
+            const storeErr = !storeRes.ok ? await storeRes.json() : null;
+            const prodErr = !prodRes.ok ? await prodRes.json() : null;
+            if (storeErr?.error) errorMsg = `Store Error: ${storeErr.error}`;
+            else if (prodErr?.error) errorMsg = `Products Error: ${prodErr.error}`;
+          } catch (e) {
+            // Use default msg if JSON parse fails
+          }
+          setFetchError(errorMsg);
+          console.error(errorMsg);
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("Failed to fetch data:", e);
-        setStoreConfig(DEFAULT_STORE_CONFIG);
-        setProducts(DEFAULT_PRODUCTS);
+        setFetchError(e.message || "Failed to connect to the server. Please ensure the backend is running.");
       }
     };
 
@@ -330,6 +339,28 @@ const App: React.FC = () => {
     setIsNavigating(false);
     setTimeout(() => setActiveProduct(null), 300);
   };
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-[2rem] shadow-2xl p-10 border border-red-100 text-center">
+          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <X size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 mb-4">Connection Failed</h2>
+          <p className="text-slate-500 font-medium mb-8 leading-relaxed">
+            {fetchError}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-blue-600 transition-all shadow-xl active:scale-95"
+          >
+            RETRY CONNECTION
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!storeConfig) return <LoadingScreen />;
 
