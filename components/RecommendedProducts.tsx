@@ -73,9 +73,12 @@ const RecommendedProducts: React.FC<RecommendedProductsProps> = ({
       setRecommendation(null);
 
       try {
-        const response = await fetch('/api/ai/recommend', {
+        const response = await fetch('/api/store_navigator/ai/recommend', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': import.meta.env.VITE_API_AUTH_TOKEN
+          },
           body: JSON.stringify({
             productIds: [currentProduct.id]
           })

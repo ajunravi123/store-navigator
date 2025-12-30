@@ -6,12 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Environment variables are loaded natively by Node.js via --env-file flag
+// or via process.env if passed manually.
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 8003;
+const AUTH_TOKEN = process.env.AUTH_TOKEN;
 
 // Initialize Google GenAI
 const apiKey = process.env.GEMINI_API_KEY;
@@ -36,77 +38,17 @@ async function ensureDataDir() {
     }
 }
 
-// GET /api/store - Get store data
-app.get('/api/store', async (req, res) => {
-    try {
-        const data = await fs.readFile(STORE_FILE, 'utf-8');
-        res.setHeader('Content-Type', 'application/json');
-        res.status(200);
-        res.end(data);
-    } catch (err) {
-        // If file doesn't exist, return empty object
-        if (err.code === 'ENOENT') {
-            res.setHeader('Content-Type', 'application/json');
-            res.status(200);
-            res.end(JSON.stringify({}));
-        } else {
-            console.error('Error reading store data:', err);
-            res.status(500);
-            res.end(JSON.stringify({ error: 'Failed to read store data' }));
-        }
+// Authentication Middleware
+const authMiddleware = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!AUTH_TOKEN) {
+        return next();
     }
-});
-
-// POST /api/store - Save store data
-app.post('/api/store', async (req, res, next) => {
-    if (req.method === 'OPTIONS') {
-        res.status(204);
-        res.end();
-        return;
+    if (!authHeader || authHeader !== AUTH_TOKEN) {
+        return res.status(401).json({ error: 'Unauthorized' });
     }
-    if (req.method !== 'POST') return next();
-
-    try {
-        const dataToSave = req.body;
-
-        // Validate payload
-        if (dataToSave === undefined || dataToSave === null) {
-            res.status(400);
-            res.end(JSON.stringify({ error: 'Invalid payload: body is required' }));
-            return;
-        }
-
-        await fs.writeFile(STORE_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
-        res.setHeader('Content-Type', 'application/json');
-        res.status(200);
-        res.end(JSON.stringify({ status: 'ok', message: 'Store data saved successfully' }));
-    } catch (err) {
-        console.error('Error writing store data:', err);
-        res.status(500);
-        res.end(JSON.stringify({ error: 'Failed to write store data' }));
-    }
-});
-
-// GET /api/products - Get products data
-app.get('/api/products', async (req, res) => {
-    try {
-        const data = await fs.readFile(PRODUCTS_FILE, 'utf-8');
-        res.setHeader('Content-Type', 'application/json');
-        res.status(200);
-        res.end(data);
-    } catch (err) {
-        // If file doesn't exist, return empty array
-        if (err.code === 'ENOENT') {
-            res.setHeader('Content-Type', 'application/json');
-            res.status(200);
-            res.end(JSON.stringify([]));
-        } else {
-            console.error('Error reading products data:', err);
-            res.status(500);
-            res.end(JSON.stringify({ error: 'Failed to read products data' }));
-        }
-    }
-});
+    next();
+};
 
 // Helper to get products for AI context
 async function getProductsForAI() {
@@ -129,13 +71,81 @@ async function getProductsForAI() {
     }
 }
 
-// POST /api/ai/chat - General AI chat
-app.post('/api/ai/chat', async (req, res) => {
+// Create a router for store_navigator
+const storeNavigatorRouter = express.Router();
+
+// Apply auth middleware to all store_navigator routes
+storeNavigatorRouter.use(authMiddleware);
+
+// GET /api/store_navigator/store - Get store data
+storeNavigatorRouter.get('/store', async (req, res) => {
+    try {
+        const data = await fs.readFile(STORE_FILE, 'utf-8');
+        res.setHeader('Content-Type', 'application/json');
+        res.status(200).send(data);
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            res.status(200).json({});
+        } else {
+            console.error('Error reading store data:', err);
+            res.status(500).json({ error: 'Failed to read store data' });
+        }
+    }
+});
+
+// POST /api/store_navigator/store - Save store data
+storeNavigatorRouter.post('/store', async (req, res) => {
+    try {
+        const dataToSave = req.body;
+        if (dataToSave === undefined || dataToSave === null) {
+            return res.status(400).json({ error: 'Invalid payload: body is required' });
+        }
+        await fs.writeFile(STORE_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
+        res.status(200).json({ status: 'ok', message: 'Store data saved successfully' });
+    } catch (err) {
+        console.error('Error writing store data:', err);
+        res.status(500).json({ error: 'Failed to write store data' });
+    }
+});
+
+// GET /api/store_navigator/products - Get products data
+storeNavigatorRouter.get('/products', async (req, res) => {
+    try {
+        const data = await fs.readFile(PRODUCTS_FILE, 'utf-8');
+        res.setHeader('Content-Type', 'application/json');
+        res.status(200).send(data);
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            res.status(200).send(JSON.stringify([]));
+        } else {
+            console.error('Error reading products data:', err);
+            res.status(500).json({ error: 'Failed to read products data' });
+        }
+    }
+});
+
+// POST /api/store_navigator/products - Save products data
+storeNavigatorRouter.post('/products', async (req, res) => {
+    try {
+        const dataToSave = req.body;
+        if (!Array.isArray(dataToSave)) {
+            return res.status(400).json({ error: 'Invalid payload: products must be an array' });
+        }
+        await fs.writeFile(PRODUCTS_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
+        res.status(200).json({ status: 'ok', message: 'Products data saved successfully', productsCount: dataToSave.length });
+    } catch (err) {
+        console.error('Error writing products data:', err);
+        res.status(500).json({ error: 'Failed to write products data' });
+    }
+});
+
+// POST /api/store_navigator/ai/chat - General AI chat for product assistance
+storeNavigatorRouter.post('/ai/chat', async (req, res) => {
     if (!genAI) {
         return res.status(500).json({ error: 'AI service not configured' });
     }
 
-    const { query, history } = req.body;
+    const { query } = req.body;
     if (!query) {
         return res.status(400).json({ error: 'Query is required' });
     }
@@ -179,15 +189,13 @@ app.post('/api/ai/chat', async (req, res) => {
     }
 });
 
-// POST /api/ai/recommend - Product-specific recommendations
-app.post('/api/ai/recommend', async (req, res) => {
+// POST /api/store_navigator/ai/recommend - Get AI-powered product recommendations
+storeNavigatorRouter.post('/ai/recommend', async (req, res) => {
     if (!genAI) {
         return res.status(500).json({ error: 'AI service not configured' });
     }
 
     const { productIds, excludedProductIds } = req.body;
-
-    // Support both single productId (legacy/simple) and productIds array
     const targetIds = Array.isArray(productIds) ? productIds : (req.body.productId ? [req.body.productId] : []);
 
     if (targetIds.length === 0) {
@@ -257,40 +265,13 @@ app.post('/api/ai/recommend', async (req, res) => {
     }
 });
 
-// POST /api/products - Save products data
-app.post('/api/products', async (req, res, next) => {
-    if (req.method === 'OPTIONS') {
-        res.status(204);
-        res.end();
-        return;
-    }
-    if (req.method !== 'POST') return next();
-
-    try {
-        const dataToSave = req.body;
-
-        // Validate payload - products should be an array
-        if (!Array.isArray(dataToSave)) {
-            res.status(400);
-            res.end(JSON.stringify({ error: 'Invalid payload: products must be an array' }));
-            return;
-        }
-
-        await fs.writeFile(PRODUCTS_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
-        res.setHeader('Content-Type', 'application/json');
-        res.status(200);
-        res.end(JSON.stringify({ status: 'ok', message: 'Products data saved successfully', productsCount: dataToSave.length }));
-    } catch (err) {
-        console.error('Error writing products data:', err);
-        res.status(500);
-        res.end(JSON.stringify({ error: 'Failed to write products data' }));
-    }
-});
+// Mount the router with the /api/store_navigator prefix
+app.use('/api/store_navigator', storeNavigatorRouter);
 
 // Serve static files from dist directory in production (after API routes)
 const DIST_DIR = path.join(__dirname, '..', 'dist');
 
-// Initialize and start server
+// Initialize data directory
 await ensureDataDir();
 
 // Check if dist directory exists and serve static files
@@ -310,5 +291,5 @@ try {
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running at http://0.0.0.0:${PORT}`);
-    console.log(`API endpoints available at http://localhost:${PORT}/api/store and http://localhost:${PORT}/api/products`);
+    console.log(`API endpoints available at http://localhost:${PORT}/api/store_navigator/*`);
 });

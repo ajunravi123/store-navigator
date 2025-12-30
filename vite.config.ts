@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   // Use environment variable for API proxy target, fallback to localhost for development
   // In production, if VITE_API_URL is not set, use localhost since Express runs on same machine
-  const apiTarget = env.VITE_API_URL || 'http://localhost:3001';
+  const apiTarget = env.VITE_API_URL || 'http://localhost:8003';
 
   return {
     server: {
@@ -35,29 +35,29 @@ export default defineConfig(({ mode }) => {
       allowedHosts: ['ajunsmachine.theworkpc.com'],
       proxy: {
         '/api': {
-          // In preview mode, ALWAYS use localhost:3001 since Express runs on same machine
+          // In preview mode, ALWAYS use localhost:8003 since Express runs on same machine
           // Ignore VITE_API_URL in preview to avoid proxy errors
-          target: 'http://127.0.0.1:3001',
+          target: 'http://127.0.0.1:8003',
           changeOrigin: false, // Don't change origin for localhost
           secure: false,
           ws: false,
           configure: (proxy, _options) => {
             proxy.on('error', (err, req, res) => {
               console.error('Preview proxy error:', err.message);
-              console.error('Failed to proxy:', req.method, req.url, 'to http://127.0.0.1:3001');
-              console.error('Make sure Express server is running on port 3001');
+              console.error('Failed to proxy:', req.method, req.url, 'to http://127.0.0.1:8003');
+              console.error('Make sure Express server is running on port 8003');
               if (!res.headersSent) {
                 res.writeHead(500, {
                   'Content-Type': 'application/json',
                 });
                 res.end(JSON.stringify({
                   error: 'Proxy error: ' + err.message,
-                  hint: 'Ensure Express server is running on port 3001'
+                  hint: 'Ensure Express server is running on port 8003'
                 }));
               }
             });
             proxy.on('proxyReq', (proxyReq, req, _res) => {
-              console.log('Proxying:', req.method, req.url, '→ http://127.0.0.1:3001');
+              console.log('Proxying:', req.method, req.url, '→ http://127.0.0.1:8003');
             });
             proxy.on('proxyRes', (proxyRes, req, _res) => {
               console.log('Proxy response:', req.method, req.url, '→', proxyRes.statusCode);

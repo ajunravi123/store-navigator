@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { StoreConfig, Product, PathNode } from './types';
 import { DEFAULT_STORE_CONFIG, DEFAULT_PRODUCTS } from './constants';
 import Store3D from './components/Store3D';
+import LoadingScreen from './components/LoadingScreen';
 import Settings from './components/Settings';
 import AIConsultant, { ChatMessage } from './components/AIConsultant';
 import RecommendedProducts from './components/RecommendedProducts';
@@ -35,8 +36,9 @@ const App: React.FC = () => {
 
     const fetchData = async () => {
       try {
-        const storeRes = await fetch('/api/store');
-        const prodRes = await fetch('/api/products');
+        const headers = { 'Authorization': import.meta.env.VITE_API_AUTH_TOKEN };
+        const storeRes = await fetch('/api/store_navigator/store', { headers });
+        const prodRes = await fetch('/api/store_navigator/products', { headers });
 
         if (storeRes.ok && prodRes.ok) {
           const storeData = await storeRes.json();
@@ -61,14 +63,18 @@ const App: React.FC = () => {
 
   const handleUpdateConfig = async (store: StoreConfig, prods: Product[]) => {
     try {
-      const storeRes = await fetch('/api/store', {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': import.meta.env.VITE_API_AUTH_TOKEN
+      };
+      const storeRes = await fetch('/api/store_navigator/store', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(store)
       });
-      const prodRes = await fetch('/api/products', {
+      const prodRes = await fetch('/api/store_navigator/products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(prods)
       });
 
@@ -325,7 +331,7 @@ const App: React.FC = () => {
     setTimeout(() => setActiveProduct(null), 300);
   };
 
-  if (!storeConfig) return null;
+  if (!storeConfig) return <LoadingScreen />;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-10">

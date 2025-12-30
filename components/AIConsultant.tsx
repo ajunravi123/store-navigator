@@ -73,9 +73,12 @@ const AIConsultant: React.FC<AIConsultantProps> = ({
     setInternalMessages(prev => [...prev, userMessage]);
 
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch('/api/store_navigator/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': import.meta.env.VITE_API_AUTH_TOKEN
+        },
         body: JSON.stringify({
           query: userQuery,
           history: internalMessages.map(m => ({ role: m.type, content: m.content }))
