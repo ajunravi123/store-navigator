@@ -20,6 +20,7 @@ interface Store3DProps {
   targetAisleId?: string | null;
   targetShelfId?: string | null;
   disableFocus?: boolean;
+  resetTrigger?: number;
 }
 
 const DEPARTMENT_COLORS = [
@@ -163,9 +164,9 @@ const ZoomToPointerControls: React.FC<{
             adjustedTarget.z = Math.max(storeBounds.minZ, Math.min(storeBounds.maxZ, adjustedTarget.z));
           }
 
-          // Calculate new camera position
-          const direction = currentPosition.clone().sub(adjustedTarget).normalize();
-          let newPosition = adjustedTarget.clone().add(direction.multiplyScalar(newDistance));
+          // Calculate new camera position - use original direction to avoid rotation
+          const originalDirection = currentPosition.clone().sub(currentTarget).normalize();
+          let newPosition = adjustedTarget.clone().add(originalDirection.multiplyScalar(newDistance));
 
           // Clamp camera position to ensure it doesn't go too far outside bounds
           if (storeBounds) {
@@ -246,7 +247,8 @@ const ZoomToPointerControls: React.FC<{
       }
 
       // Clamp camera position to reasonable bounds
-      const maxCameraDistance = Math.max(storeBounds.maxX - storeBounds.minX, storeBounds.maxZ - storeBounds.minZ) * 0.8;
+      // Clamp camera position to reasonable bounds - increased range to accommodate default view
+      const maxCameraDistance = Math.max(storeBounds.maxX - storeBounds.minX, storeBounds.maxZ - storeBounds.minZ) * 2.0;
       const cameraBounds = {
         minX: storeBounds.minX - maxCameraDistance,
         maxX: storeBounds.maxX + maxCameraDistance,
@@ -1429,8 +1431,9 @@ const CameraController: React.FC<{
   avatarPosition: THREE.Vector3 | null;
   loopRestartTrigger: number;
   avatarStatus: { isWaiting: boolean; forward: THREE.Vector3 };
-}> = ({ config, targetPoint, avatarPosition, loopRestartTrigger, avatarStatus }) => {
-  const { camera, controls } = useThree();
+  forceResetTrigger?: number;
+}> = ({ config, targetPoint, avatarPosition, loopRestartTrigger, avatarStatus, forceResetTrigger }) => {
+  const { camera, gl, controls } = useThree();
   const centerX = config.gridSize.width / 2;
   const centerZ = config.gridSize.depth / 2;
 
@@ -1443,6 +1446,7 @@ const CameraController: React.FC<{
   const lastInteractionTimeRef = useRef(Date.now()); // Start with 3s delay on load
   const isResettingRef = useRef(true); // Smooth reset on load
   const prevTriggerRef = useRef(loopRestartTrigger);
+  const prevResetTriggerRef = useRef(forceResetTrigger || 0);
 
   const defaultTarget = useMemo(() => new THREE.Vector3(0, 0, 0), []);
   const defaultPosition = useMemo(() => {
@@ -1476,12 +1480,19 @@ const CameraController: React.FC<{
       }, 2000); // 2 second delay after user stops interacting
     };
 
+    const onWheel = () => {
+      onStart();
+      onEnd();
+    };
+
     orbitControls.addEventListener('start', onStart);
     orbitControls.addEventListener('end', onEnd);
+    gl.domElement.addEventListener('wheel', onWheel, { passive: true });
 
     return () => {
       orbitControls.removeEventListener('start', onStart);
       orbitControls.removeEventListener('end', onEnd);
+      gl.domElement.removeEventListener('wheel', onWheel);
       if (interactionTimeoutRef.current) {
         clearTimeout(interactionTimeoutRef.current);
       }
@@ -1501,35 +1512,38 @@ const CameraController: React.FC<{
     }
   }, [targetPoint, defaultTarget]);
 
-  // Handle loop restart trigger - smooth reset to default view
+  // Handle manual reset trigger
   useEffect(() => {
-    if (loopRestartTrigger !== prevTriggerRef.current) {
+    if (forceResetTrigger !== undefined && forceResetTrigger !== prevResetTriggerRef.current) {
+      console.log('CameraController: Manual Reset Triggered', { forceResetTrigger });
       isResettingRef.current = true;
-      // hasUserInteractedRef.current remains true if it was set - do NOT clear it
-      lastInteractionTimeRef.current = Date.now(); // Reset idle timer
-      prevTriggerRef.current = loopRestartTrigger;
+      hasUserInteractedRef.current = true; // Manual reset counts as interaction to disable auto-zoom/follow
+      userInteractingRef.current = false; // Kill any current interaction drag state
+      lastInteractionTimeRef.current = Date.now();
+      prevResetTriggerRef.current = forceResetTrigger;
+      setIsAnimating(false); // Cancel any product focusing animation
     }
-  }, [loopRestartTrigger]);
+  }, [forceResetTrigger]);
 
   useFrame(() => {
-    if (!controls || userInteractingRef.current) return;
+    if (!controls || userInteractingRef.current) {
+      if (userInteractingRef.current) isResettingRef.current = false; // Cancel reset if user interacts
+      return;
+    }
 
     const orbitControls = controls as any;
 
-    // Priority 0: Reset to default view (on load or loop restart)
-    // ONLY if user has NOT interacted yet. If they have, we respect their manual view.
-    if (isResettingRef.current && !hasUserInteractedRef.current) {
-      orbitControls.target.lerp(defaultTarget, 0.05);
-      camera.position.lerp(defaultPosition, 0.05);
+    // Priority 0: Reset to default view (on load or manual reset)
+    if (isResettingRef.current) {
+      orbitControls.target.lerp(defaultTarget, 0.15); // Faster lerp
+      camera.position.lerp(defaultPosition, 0.15); // Faster lerp
       orbitControls.update();
 
-      if (camera.position.distanceTo(defaultPosition) < 0.5 && orbitControls.target.distanceTo(defaultTarget) < 0.5) {
+      if (camera.position.distanceTo(defaultPosition) < 0.2 && orbitControls.target.distanceTo(defaultTarget) < 0.2) {
         isResettingRef.current = false;
+        console.log('CameraController: Reset Complete');
       }
       return;
-    } else if (isResettingRef.current && hasUserInteractedRef.current) {
-      // If we flagged for reset but user interacted, cancel the reset flag
-      isResettingRef.current = false;
     }
 
     const timeSinceInteraction = Date.now() - lastInteractionTimeRef.current;
@@ -1592,7 +1606,7 @@ const CameraController: React.FC<{
   return null;
 };
 
-const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, currentFloor, allProducts = [], showAllProducts = false, showLabels = false, targetDepartmentId, targetAisleId, targetShelfId, disableFocus }) => {
+const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, currentFloor, allProducts = [], showAllProducts = false, showLabels = false, targetDepartmentId, targetAisleId, targetShelfId, disableFocus, resetTrigger }) => {
   const centerX = config.gridSize.width / 2;
   const centerZ = config.gridSize.depth / 2;
   const [avatarPosition, setAvatarPosition] = useState<THREE.Vector3 | null>(null);
@@ -1742,6 +1756,7 @@ const StoreScene: React.FC<Store3DProps> = ({ config, targetProduct, path, curre
         avatarPosition={avatarPosition}
         loopRestartTrigger={restartTrigger}
         avatarStatus={avatarStatus}
+        forceResetTrigger={resetTrigger}
       />
       <ambientLight intensity={0.2} />
       <pointLight

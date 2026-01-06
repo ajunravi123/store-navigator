@@ -8,7 +8,7 @@ import AIConsultant, { ChatMessage } from './components/AIConsultant';
 import RecommendedProducts from './components/RecommendedProducts';
 import { findShortestPath } from './services/pathfinder';
 import { findBayById, getAllFloors, migrateStoreConfig, getProductLocation, getAisleColor, calculateShelfPositions } from './utils/storeHelpers';
-import { Search, Navigation2, X, Info, Target, Layers, DoorOpen, Navigation, Settings as SettingsIcon, LayoutGrid, Bot, Package } from 'lucide-react';
+import { Search, Navigation2, X, Info, Target, Layers, DoorOpen, Navigation, Settings as SettingsIcon, LayoutGrid, Bot, Package, Maximize } from 'lucide-react';
 
 type AppView = 'explorer' | 'settings';
 
@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
   const [currentMapFloor, setCurrentMapFloor] = useState(0);
+  const [mapResetTrigger, setMapResetTrigger] = useState(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
 
@@ -681,8 +682,16 @@ const App: React.FC = () => {
                   allProducts={products}
                   showAllProducts={aiHighlightedIds.length > 0}
                   disableFocus={true}
+                  resetTrigger={mapResetTrigger}
                 />
                 <div className="absolute top-6 right-6 flex flex-col gap-2">
+                  <button
+                    onClick={() => setMapResetTrigger(prev => prev + 1)}
+                    className="w-12 h-12 bg-white/95 text-slate-900 rounded-2xl flex items-center justify-center border border-slate-100 shadow-2xl hover:bg-white hover:scale-105 active:scale-95 transition-all mb-2"
+                    title="Reset View"
+                  >
+                    <Maximize size={20} />
+                  </button>
                   {getAllFloors(storeConfig).slice().reverse().map(f => (
                     <button
                       key={f}
